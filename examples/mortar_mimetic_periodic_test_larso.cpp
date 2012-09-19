@@ -25,7 +25,7 @@
 using namespace Dune;
 using namespace std;
 
-int main(int argc, char** argv)
+int main(int varnum, char** vararg)
 {
 
   if (varnum != 2) { //Wrong nr of input param
@@ -46,12 +46,10 @@ int main(int argc, char** argv)
 
   if (! (eclParser.hasField("SPECGRID") && eclParser.hasField("COORD") && eclParser.hasField("ZCORN"))) {  
     cerr << "Error: Did not find SPECGRID, COORD and ZCORN in Eclipse file " << ECLIPSEFILENAME << endl;  
-    usage();  
     exit(1);  
   }
   if (! (eclParser.hasField("PERMX") && eclParser.hasField("PORO"))) {  
     cerr << "Error: Did not find PERMX and PORO in Eclipse file " << ECLIPSEFILENAME << endl;  
-    usage();  
     exit(1);  
   }
   
