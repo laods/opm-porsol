@@ -82,9 +82,7 @@ int main(int varnum, char** vararg)
     }
   }
 
-  MortarHelper<CpGrid, dim> mortar;
-  mortar.findMinMax(grid);
-  mortar.find_n(grid);
+  MortarHelper<CpGrid> mortar(grid);
   cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
@@ -92,6 +90,7 @@ int main(int varnum, char** vararg)
   FlowSolver solver;
   // solver.init(...)
   // Må gjøre noe med template BCs til FlowSolver!
+  // Lage ny BCs class ?
 
   return 0;
 }
