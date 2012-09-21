@@ -87,10 +87,15 @@ int main(int varnum, char** vararg)
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
 
+  mortar.printFace(1);
+  mortar.printFace(2);
+  mortar.printFace(6);
+
   FlowSolver solver;
   // solver.init(...)
   // Må gjøre noe med template BCs til FlowSolver!
   // Lage ny BCs class ?
+  // Lage ny IncompFlowSolverHybrid class ?
 
   return 0;
 }

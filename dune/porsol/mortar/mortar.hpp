@@ -1,7 +1,7 @@
 #include <vector>
 
 #include <dune/grid/CpGrid.hpp>
-#include <dune/porsol/mortar/boundarygrid.h>
+#include <dune/porsol/mortar/boundarygrid.cc>
 
 // Helper class for mortar methods
 template<class GridType>
@@ -15,6 +15,8 @@ public:
   typedef typename GridType::LeafGridView::template Codim<dim>::Iterator LeafVertexIterator;
   typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;
   typedef typename GridType::LeafGridView::template Codim<0>::Iterator LeafIterator;
+  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::GlobalCoordinate GlobalCoordinate;
+typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoordinate LocalCoordinate;
 
   MortarHelper() {};
   MortarHelper(const GridType& gv)
@@ -22,17 +24,23 @@ public:
   {
     findMinMax();
     find_n();
+    tol_ = 1e-8;
   };
-  MortarHelper(const GridType& gv, std::vector<double> min,std::vector<double> max, int n1, int n2_)
-    : gv_(gv), min_(min), max_(max), n1_(n1), n2_(n2) {};
+  MortarHelper(const GridType& gv, std::vector<ctype> min,std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
+    : gv_(gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
   std::vector<double> min();
   std::vector<double> max();
   int n1();
   int n2();
+  double tol_;
   void setMinMax(std::vector<double> min, std::vector<double> max);
   void findMinMax();
   void set_n(int n1, int n2);
   void find_n();
+  
+  // Test function for debugging
+  // Print vertices on face quads with global index and coord
+  void printFace(int face);
 
 private:
   std::vector<double> min_;
@@ -55,6 +63,10 @@ private:
 
   std::vector<BoundaryGrid::Vertex> extractFace(Direction dir, ctype coord);
   BoundaryGrid extractMasterFace(Direction dir, ctype coord, SIDE side=LEFT, bool dc=false);
+  bool isOnPlane(Direction plane, GlobalCoordinate coord, ctype value);
+  bool isOnLine(Direction dir, GlobalCoordinate coord, ctype x, ctype y);
+  bool isOnPoint(GlobalCoordinate coord, GlobalCoordinate point);
+
 };
 
 
@@ -140,7 +152,7 @@ std::vector<BoundaryGrid::Vertex> MortarHelper<GridType>::extractFace(Direction 
   return result;
 }
 
-  template<class GridType>
+template<class GridType>
 BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir, 
 							    ctype coord,                                                                                        SIDE side, bool dc) 
 {
@@ -210,4 +222,72 @@ BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir,
   }
 
   return result;
+}
+
+template<class GridType>
+bool MortarHelper<GridType>::isOnPlane(Direction plane,
+                                            GlobalCoordinate coord,
+                                            ctype value)
+{
+  if (plane < X || plane > Z)
+    return false;
+  int p = log2(plane);
+  ctype delta = fabs(value-coord[p]);
+  return delta < tol_;
+}
+
+template<class GridType>
+bool MortarHelper<GridType>::isOnLine(Direction dir,
+                                           GlobalCoordinate coord,
+                                           ctype x, ctype y)
+{
+  if (dir < X || dir > Z)
+    return false;
+  int ix = int(log2(dir)+1) % 3;
+  int iy = int(log2(dir)+2) % 3;
+  ctype delta = x-coord[ix];
+  if (delta > tol_ || delta < -tol_)
+    return false;
+  delta = y-coord[iy];
+  if (delta > tol_ || delta < -tol_)
+    return false;
+
+  return true;
+}
+
+template<class GridType>
+bool MortarHelper<GridType>::isOnPoint(GlobalCoordinate coord,
+                                            GlobalCoordinate point)
+{
+  GlobalCoordinate delta = point-coord;
+  return delta.one_norm() < tol_;
+}
+
+template<class GridType>
+void MortarHelper<GridType>::printFace(int face) {
+  BoundaryGrid bg;
+  switch (face) {
+  case 1: // xmin
+    bg = extractMasterFace(X, min_[0], LEFT);
+    break;
+  case 2: // xmax
+    bg = extractMasterFace(X, max_[0], RIGHT);
+    break;
+  case 3: // ymin
+    bg = extractMasterFace(Y, min_[1], LEFT);
+    break;
+  case 4: // ymax
+    bg = extractMasterFace(Y, max_[1], RIGHT);
+    break;
+  case 5: // zmin
+    bg = extractMasterFace(Z, min_[2], LEFT);
+    break;
+  case 6: // zmax
+    bg = extractMasterFace(Z, max_[2], RIGHT);
+    break;
+  default:
+    std::cerr << "Face nr must be >0 and <7" << std::endl;
+    return;
+  }
+  std::cout << bg << std::endl;
 }
