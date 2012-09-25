@@ -39,44 +39,58 @@ int main(int varnum, char** vararg)
   typedef Dune::ReservoirPropertyCapillary<3>                    RI;
   typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs, Dune::MimeticIPEvaluator> FlowSolver;
 
-  // Check input ---------------------------------------------------------------------------------------
+  // Check input --------------------------------
 
-  if (varnum != 2) { //Wrong nr of input param
-    cerr << "Wrong nr of input parameters. Only eclipse grid file name is allowed." << endl;
-    exit(1);
-  }
-
-  const char* ECLIPSEFILENAME(vararg[1]);
-  ifstream eclipsefile(ECLIPSEFILENAME, ios::in);
-  if (eclipsefile.fail()) {
-    cerr << "Error: " << ECLIPSEFILENAME << " not found or readable." << endl;
-    exit(1);
-  }
-  eclipsefile.close();
-  
   // Parameters
   double ztol = 1e-8;
-  const int dim = 3;  
+  const int dim = 3; 
+  bool printSoln = false;
+  bool vtk = true;
   
-  cout << "Parsing Eclipse file: " << ECLIPSEFILENAME << "..." << endl;
-  Opm::EclipseGridParser eclParser(ECLIPSEFILENAME, true);
-
-  if (! (eclParser.hasField("SPECGRID") && eclParser.hasField("COORD") && eclParser.hasField("ZCORN"))) {  
-    cerr << "Error: Did not find SPECGRID, COORD and ZCORN in Eclipse file " << ECLIPSEFILENAME << endl;  
-    exit(1);  
-  }
-  if (! (eclParser.hasField("PERMX") && eclParser.hasField("PORO"))) {  
-    cerr << "Error: Did not find PERMX and PORO in Eclipse file " << ECLIPSEFILENAME << endl;  
-    exit(1);  
-  }
-
   CpGrid grid;
-  grid.readEclipseFormat(ECLIPSEFILENAME, ztol, false);
+  ReservoirPropertyCapillary<dim> rockParams;
+
+  if (varnum > 2) { //Wrong nr of input param
+    cerr << "Wrong nr of input parameters. Only eclipse grid file name is allowed. If no grid file provided, a uniform cartesian grid is constructed." << endl;
+    exit(1);
+  }
+  else if (varnum == 1) {
+    array<int,3> dims = {10, 10, 5};
+    array<double,3> cellsize = {0.05, 0.05, 0.02};
+    grid.createCartesian(dims, cellsize);
+    double uniformPORO = 0.2;
+    double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
+    rockParams.init(grid.size(0), uniformPORO, uniformPERM);
+  }
+  
+  else {
+
+    const char* ECLIPSEFILENAME(vararg[1]);
+    ifstream eclipsefile(ECLIPSEFILENAME, ios::in);
+    if (eclipsefile.fail()) {
+      cerr << "Error: " << ECLIPSEFILENAME << " not found or readable." << endl;
+      exit(1);
+    }
+    eclipsefile.close();
+  
+    cout << "Parsing Eclipse file: " << ECLIPSEFILENAME << "..." << endl;
+    Opm::EclipseGridParser eclParser(ECLIPSEFILENAME, true);
+
+    if (! (eclParser.hasField("SPECGRID") && eclParser.hasField("COORD") && eclParser.hasField("ZCORN"))) {  
+      cerr << "Error: Did not find SPECGRID, COORD and ZCORN in Eclipse file " << ECLIPSEFILENAME << endl;  
+      exit(1);  
+  }
+    if (! (eclParser.hasField("PERMX") && eclParser.hasField("PORO"))) {  
+      cerr << "Error: Did not find PERMX and PORO in Eclipse file " << ECLIPSEFILENAME << endl;  
+      exit(1);  
+  }
+
+    grid.readEclipseFormat(ECLIPSEFILENAME, ztol, false);
+    rockParams.init(eclParser, grid.globalCell());
+  }  
+    
   int numCells = grid.size(0);
 
-  ReservoirPropertyCapillary<dim> rockParams;
-  rockParams.init(eclParser, grid.globalCell());
-  
   if (numCells < 10) {
     cout << "PORO and PERMX:" << endl;
     for (int c = 0; c < numCells; ++c) {
@@ -101,10 +115,14 @@ int main(int varnum, char** vararg)
   
   array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0) }};
+			     FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
+			     //FlowBC(FlowBC::Periodic, 0.0),
+			     //FlowBC(FlowBC::Periodic, 0.0),
+			     //FlowBC(FlowBC::Dirichlet, 0.0),
+			     //FlowBC(FlowBC::Dirichlet, 0.0), 
+			     FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
 
   BCs fbc;
   createPeriodic(fbc, g, cond);
@@ -123,33 +141,38 @@ int main(int varnum, char** vararg)
   // Lage ny BCs class ?
   // Lage ny IncompFlowSolverHybrid class ?
 
-  // Print solution
   FlowSolver::SolutionType soln = solver.getSolution();
-  cout << "Cell Pressure:\n" << scientific << setprecision(15);
-  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    cout << '\t' << soln.pressure(c) << '\n';
-  }
-  
-  cout << "Cell (Out) Fluxes:\n";
-  cout << "flux = [\n";
-  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-      cout << soln.outflux(f) << ' ';
-    }
-    cout << "\b\n";
-  }
-  cout << "]\n";
 
+  // Print solution
+  if (printSoln) {
+    cout << "Cell Pressure:\n" << scientific << setprecision(15);
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+      cout << '\t' << soln.pressure(c) << '\n';
+    }
+    
+    cout << "Cell (Out) Fluxes:\n";
+    cout << "flux = [\n";
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+      for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+	cout << soln.outflux(f) << ' ';
+      }
+      cout << "\b\n";
+    }
+    cout << "]\n";
+  } 
+   
   vector<GI::Scalar> cellPressure;
   for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
     cellPressure.push_back(soln.pressure(c)/(1.0*Opm::unit::barsa));
   }
-
-  // VTK writer
-  string vtufile = "mortar_output";
-  VTKWriter<CpGrid::LeafGridView> writer(grid.leafView());
-  writer.addCellData(cellPressure, "cellPressure");
-  writer.write(vtufile);
   
+  // VTK writer
+  if (vtk) {
+    string vtufile = "mortar_output";
+    VTKWriter<CpGrid::LeafGridView> writer(grid.leafView());
+    writer.addCellData(cellPressure, "cellPressure");
+    writer.write(vtufile);
+  }
+
   return 0;
 }
