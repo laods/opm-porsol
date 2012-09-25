@@ -24,6 +24,8 @@
 
 #include <dune/porsol/mortar/mortar.hpp>
 
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+
 using namespace Dune;
 using namespace std;
 
@@ -87,15 +89,67 @@ int main(int varnum, char** vararg)
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
 
-  mortar.printFace(1);
-  mortar.printFace(2);
-  mortar.printFace(6);
+  //mortar.printFace(1);
+  //mortar.printFace(2);
+  //mortar.printFace(6);
+
+  CI::Vector gravity;
+  gravity[0] = gravity[1] = gravity[2] = 0.0;
+  
+  grid.setUniqueBoundaryIds(true);
+  GridInterfaceEuler<CpGrid> g(grid);
+  
+  array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 0.0) }};
+
+  BCs fbc;
+  createPeriodic(fbc, g, cond);
 
   FlowSolver solver;
+  solver.init(g, rockParams, gravity, fbc);
+
+  vector<double> src(numCells, 0.0);
+  vector<double> sat(numCells, 0.0);
+
+  solver.solve(rockParams, sat, fbc, src);
+
+ 
   // solver.init(...)
   // Må gjøre noe med template BCs til FlowSolver!
   // Lage ny BCs class ?
   // Lage ny IncompFlowSolverHybrid class ?
 
+  // Print solution
+  FlowSolver::SolutionType soln = solver.getSolution();
+  cout << "Cell Pressure:\n" << scientific << setprecision(15);
+  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+    cout << '\t' << soln.pressure(c) << '\n';
+  }
+  
+  cout << "Cell (Out) Fluxes:\n";
+  cout << "flux = [\n";
+  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+      cout << soln.outflux(f) << ' ';
+    }
+    cout << "\b\n";
+  }
+  cout << "]\n";
+
+  vector<GI::Scalar> cellPressure;
+  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+    cellPressure.push_back(soln.pressure(c)/(1.0*Opm::unit::barsa));
+  }
+
+  // VTK writer
+  string vtufile = "mortar_output";
+  VTKWriter<CpGrid::LeafGridView> writer(grid.leafView());
+  writer.addCellData(cellPressure, "cellPressure");
+  writer.write(vtufile);
+  
   return 0;
 }
