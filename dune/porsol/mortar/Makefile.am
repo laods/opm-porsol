@@ -4,6 +4,6 @@
 SUBDIRS = 
 
 mortardir = $(includedir)/dune/solvers/mortar
-mortar_HEADERS = mortar.hpp
+mortar_HEADERS =
 
 include $(top_srcdir)/am/global-rules
