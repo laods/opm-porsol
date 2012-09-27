@@ -42,6 +42,8 @@ typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoord
   // Print vertices on face quads with global index and coord
   void printFace(int face);
 
+  void periodicBCsMortar();
+
 private:
   std::vector<double> min_;
   std::vector<double> max_;
@@ -154,7 +156,9 @@ std::vector<BoundaryGrid::Vertex> MortarHelper<GridType>::extractFace(Direction 
 
 template<class GridType>
 BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir, 
-							    ctype coord,                                                                                        SIDE side, bool dc) 
+						       ctype coord,
+						       SIDE side,
+						       bool dc) 
 {
   // Based on ElasticityUpscale::extractMasterFace
   static const int V1[3][4] = {{0,2,4,6},
@@ -290,4 +294,40 @@ void MortarHelper<GridType>::printFace(int face) {
     return;
   }
   std::cout << bg << std::endl;
+}
+
+template<class GridType>
+void MortarHelper<GridType>::periodicBCsMortar() {
+
+  // Based on ElasticityUpscale::periodicBCsMortar()
+  // But not MPC part (that is only step 3-6)
+
+  // Step 3: extracts and establishes a quad grid 
+  //         for the left/right/front/back sides
+  master.push_back(extractMasterFace(X, min_[0], LEFT, true));
+  master.push_back(extractMasterFace(X, max_[0], RIGHT, true));
+  master.push_back(extractMasterFace(Y, min_[1], LEFT, true));
+  master.push_back(extractMasterFace(Y, max_[1], RIGHT, true));
+
+  // Step 4: Establishes grids for the dual dofs
+  BoundaryGrid::FaceCoord fmin, fmax;
+  fmin[0] = min_[1]; fmin[1] = min_[2];
+  fmax[0] = max_[1]; fmax[1] = max_[2];
+  BoundaryGrid lambdax = BoundaryGrid::uniform(fmin, fmax, n2_, 1, true);
+  
+  fmin[0] = min_[0]; fmin[1] = min_[2];
+  fmax[0] = max_[0]; fmax[1] = max_[2];
+  BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, true);
+
+  /*
+  // Step 5: Calculates the coupling matrix L1 between left/right sides
+  Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0);
+  Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0);
+  L.push_back(MatrixOps::Axpy(L1_left, L1_right, -1));
+
+  // Step 6: Calculates the coupling matrix L1 between front/back sides
+  Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1);
+  Matrix L2_right = findLMatrixMortar(master[3], lambday, 1);
+  L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
+  */
 }

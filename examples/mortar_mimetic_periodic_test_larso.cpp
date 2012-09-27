@@ -106,6 +106,7 @@ int main(int varnum, char** vararg)
   //mortar.printFace(1);
   //mortar.printFace(2);
   //mortar.printFace(6);
+  mortar.periodicBCsMortar();
 
   CI::Vector gravity;
   gravity[0] = gravity[1] = gravity[2] = 0.0;
@@ -115,14 +116,14 @@ int main(int varnum, char** vararg)
   
   array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
-			     //FlowBC(FlowBC::Periodic, 0.0),
-			     //FlowBC(FlowBC::Periodic, 0.0),
+			     //FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
+			     //FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 0.0),
 			     //FlowBC(FlowBC::Dirichlet, 0.0),
 			     //FlowBC(FlowBC::Dirichlet, 0.0), 
-			     FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 0.0) }};
 
   BCs fbc;
   createPeriodic(fbc, g, cond);
@@ -136,8 +137,7 @@ int main(int varnum, char** vararg)
   solver.solve(rockParams, sat, fbc, src);
 
  
-  // solver.init(...)
-  // Må gjøre noe med template BCs til FlowSolver!
+  // solver.init(...) // Må gjøre noe med template BCs til FlowSolver!
   // Lage ny BCs class ?
   // Lage ny IncompFlowSolverHybrid class ?
 
