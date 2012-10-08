@@ -2,6 +2,8 @@
 
 #include <dune/grid/CpGrid.hpp>
 #include <dune/porsol/mortar/boundarygrid.cc>
+#include <dune/porsol/mortar/matrixops.hpp>
+#include <dune/porsol/mortar/shapefunctions.hh>
 
 //! \brief A sparse matrix holding our operator
 typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;
@@ -351,20 +353,34 @@ void MortarHelper<GridType>::periodicBCsMortar() {
 
 template<class GridType>
 Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
-							       const BoundaryGrid& interface,
-							       int dir)
+						 const BoundaryGrid& interface,
+						 int dir)
 {
-  /*
   std::vector< std::set<int> > adj;
-  adj.resize(A.getEqns());
+  //adj.resize(A.getEqns());
 
   // process pillar by pillar
   size_t per_pillar = b1.size()/interface.size();
   for (size_t p=0;p<interface.size();++p) {
     for (size_t q=0;q<per_pillar;++q) {
-      for (size_t i=0;i<4;++i) {
-        for (size_t d=0;d<3;++d) {
-          MPC* mpc = A.getMPC(b1[p*per_pillar+q].v[i].i,d);
+      for (size_t i=0;i<1;++i) { // ?? i<4 or i<1 ??
+        //for (size_t d=0;d<3;++d) { // We only have one DOF per vertex
+	//MPC* mpc = A.getMPC(b1[p*per_pillar+q].v[i].i,d);
+
+	// A given DOF here is never a MPC since the DOF is at face centers, not vertices!
+	// Check for MPC not nescessary (as it is in elasticity upscale)
+	
+	// Own code:
+	/*
+	int dof = getEquationForDof(face);
+	for (int j=0;j<4;++j) {
+	  adj[dof].insert(interface[p].v[j].i); 
+	  // No need for multiplying with 3 (only one DOF per vertex)
+	}
+	*/
+	  
+	// Original implementation from elasticity:
+	/*
           if (mpc) {
             for (int n=0;n<mpc->getNoMaster();++n) {
               int dof = A.getEquationForDof(mpc->getMaster(n).node,d);
@@ -380,16 +396,18 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
                 adj[dof].insert(3*interface[p].v[j].i+d);
             }
           }
-        }
+	*/
+	//}
       }
     }
   }
 
+  /*
   Matrix B;
-  MatrixOps::fromAdjacency(B,adj,A.getEqns(),3*interface.totalNodes());
+  MatrixOps::fromAdjacency(B,adj,A.getEqns(),interface.totalNodes()); // Fix getEqns()
 
-  // get a set of P1 shape functions for the velocity
-  P1ShapeFunctionSet<ctype,ctype,2> ubasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
+  // get a set of P0 shape functions for the face pressures
+  P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
   // get a set of P1 shape functions for multipliers
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
   // get a reference element
@@ -409,7 +427,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
     for (size_t q=0;q<per_pillar;++q) {
       const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
       HexGeometry<2,2,GridType> hex(qu,gv,dir);
-      Dune::FieldMatrix<ctype,4,4> E;
+      Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
       for (r = rule.begin(); r != rule.end();++r) {
         ctype detJ = hex.integrationElement(r->position());
@@ -417,13 +435,28 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
           continue;
         typename HexGeometry<2,2,GridType>::LocalCoordinate loc = 
                                         lg.local(hex.global(r->position()));
-        for (int i=0;i<4;++i) {
-          for (int j=0;j<4;++j)
-            E[i][j] += ubasis[i].evaluateFunction(r->position())*
+        for (int i=0;i<pbasis.size();++i) {
+          for (int j=0;j<lbasis.size();++j)
+            E[i][j] += pbasis[i].evaluateFunction(r->position())*
                        lbasis[j].evaluateFunction(loc)*detJ*r->weight();
         }
       }
       // and assemble element contributions
+      
+      // Own code:
+      for (int i=0;i<1;++i) {
+	// No need to check for MPC
+	int indexi = A.getEquationForDof(qu.v[i].i,d); // Fix
+	if (indexi > -1) {
+	  for (int j=0;j<4;++j) {
+	    int indexj = qi.v[j].i;
+	    B[indexi][indexj] += E[i][j];
+	  }
+	}
+      }
+
+      // Old:
+      /*
       for (int d=0;d<3;++d) {
         for (int i=0;i<4;++i) {
           MPC* mpc = A.getMPC(qu.v[i].i,d);
@@ -448,6 +481,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
           }
         }
       }
+      */
     }
   }
 
