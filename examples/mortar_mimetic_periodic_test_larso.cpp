@@ -23,6 +23,7 @@
 #include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 
 #include <dune/porsol/mortar/mortar.hpp>
+#include <dune/porsol/mortar/shapefunctions.hh>
 
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
@@ -39,13 +40,15 @@ int main(int varnum, char** vararg)
   typedef Dune::ReservoirPropertyCapillary<3>                    RI;
   typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs, Dune::MimeticIPEvaluator> FlowSolver;
 
+  typedef double ctype; // To be used in shapefunctions
+
   // Check input --------------------------------
 
   // Parameters
   double ztol = 1e-8;
   const int dim = 3; 
   bool printSoln = false;
-  bool vtk = true;
+  bool vtk = false;
   
   CpGrid grid;
   ReservoirPropertyCapillary<dim> rockParams;
@@ -136,7 +139,18 @@ int main(int varnum, char** vararg)
 
   solver.solve(rockParams, sat, fbc, src);
 
- 
+  // Play with shape functions
+  P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
+  P0ShapeFunctionSet<ctype,ctype,2> ubasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
+
+  Dune::FieldVector<ctype,2> pkt(0.5);
+  cout << "Size ubasis: " << ubasis.size() << endl;
+  cout << "ubasis = " << ubasis[0].evaluateFunction(pkt) << endl;
+  cout << "ugrad  = " << ubasis[0].evaluateGradient(pkt) << endl;
+  cout << "Size lbasis: " << lbasis.size() << endl;
+  cout << "lbasis = " << lbasis[0].evaluateFunction(pkt) << endl;
+  cout << "lgrad  = " << lbasis[0].evaluateGradient(pkt) << endl;
+
   // solver.init(...) // Må gjøre noe med template BCs til FlowSolver!
   // Lage ny BCs class ?
   // Lage ny IncompFlowSolverHybrid class ?

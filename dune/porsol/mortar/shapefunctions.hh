@@ -85,6 +85,12 @@ public:
     //! \brief The number of shape functions in the set
     enum { n = dim==2?4:8 };
 
+    //! \brief Get size or number of shapefunctions
+    int size()
+    {
+      return n;
+    }
+
     //! \brief A single shape function
     typedef LinearShapeFunction<ctype,rtype,dim> ShapeFunction;
 
@@ -168,4 +174,87 @@ private:
 
     //! \brief Our shape functions
     ShapeFunction f[n];
+};
+
+//! \brief Represents a constant shape function on a Q4/Q8 element
+template<class ctype, class rtype, int dim>
+class ConstantShapeFunction 
+{
+public:
+  //! \brief Default contructor
+  ConstantShapeFunction() : coeff(1.0) {}
+
+  //! \brief Set given coefficient
+  void setCoeff(const rtype coeff_)
+  {
+    coeff = coeff_;
+  }
+
+  //! \brief Evaluate the shape function
+  //! \param[in] local The local coordinates
+  rtype evaluateFunction(const Dune::FieldVector<ctype,dim>& local) const
+  {
+    return coeff;
+  }
+
+  //! \brief Evaluate the gradient of the shape function
+  //! \param[in] local The local coordinates
+  Dune::FieldVector<rtype,dim>
+  evaluateGradient(const Dune::FieldVector<ctype,dim>& local) const
+  {
+    Dune::FieldVector<rtype,dim> result(0.0);
+    return result;
+  }
+
+private:
+  //! \brief The constant coefficient
+  rtype coeff;
+
+};
+
+//! \brief Singleton handler for the set of ConstantShapeFunction
+template<class ctype, class rtype, int dim>
+class P0ShapeFunctionSet
+{
+public:
+  //! \brief The number of shape functions in the set
+  enum {n = 1};
+
+  //! \brief Get size or number of shapefunctions
+  int size()
+  {
+    return n;
+  }
+
+  //! \brief A single shape function
+  typedef ConstantShapeFunction<ctype,rtype,dim> ShapeFunction;
+
+  //! \brief The type of the return value from a shape function
+  typedef rtype resulttype;
+  
+  //! \brief Get the only instance of this class
+  static const P0ShapeFunctionSet& instance()
+  {
+    static const P0ShapeFunctionSet sfs;
+    return sfs;
+  }
+
+  //! \brief Obtain a given shape function
+  //! \param[in] i The requested shape function
+  const ShapeFunction& operator[](int i) const
+  {
+    return f[i];
+  }
+
+private:
+  //! \brief Private constructor prevents additional instances
+  P0ShapeFunctionSet()
+  {
+    for (int i=0;i<n;++i) {
+      f[i].setCoeff(1.0);
+    }
+  }
+
+  //! \brief Our shape function
+  ShapeFunction f[n];
 };
