@@ -3,6 +3,15 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/porsol/mortar/boundarygrid.cc>
 
+//! \brief A sparse matrix holding our operator
+typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;
+
+//! \brief A vector holding our RHS
+typedef Dune::BlockVector<Dune::FieldVector<double,1> > Vector;
+
+//! \brief For storing matrix adjacency/sparsity patterns
+typedef std::vector< std::set<int> > AdjacencyPattern;
+
 // Helper class for mortar methods
 template<class GridType>
 class MortarHelper 
@@ -13,12 +22,14 @@ public:
   typedef typename GridType::LeafGridView::ctype ctype;
   typedef typename GridType::LeafGridView::IndexSet LeafIndexSet;
   typedef typename GridType::LeafGridView::template Codim<dim>::Iterator LeafVertexIterator;
-  typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;
   typedef typename GridType::LeafGridView::template Codim<0>::Iterator LeafIterator;
-  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::GlobalCoordinate GlobalCoordinate;
-typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoordinate LocalCoordinate;
+  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::GlobalCoordinate 
+  GlobalCoordinate;
+  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoordinate 
+  LocalCoordinate;
 
   MortarHelper() {};
+
   MortarHelper(const GridType& gv)
     : gv_(gv) 
   {
@@ -26,8 +37,11 @@ typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoord
     find_n();
     tol_ = 1e-8;
   };
-  MortarHelper(const GridType& gv, std::vector<ctype> min,std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
+
+  MortarHelper(const GridType& gv, std::vector<ctype> min,
+	       std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
     : gv_(gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
+
   std::vector<double> min();
   std::vector<double> max();
   int n1();
@@ -68,6 +82,8 @@ private:
   bool isOnPlane(Direction plane, GlobalCoordinate coord, ctype value);
   bool isOnLine(Direction dir, GlobalCoordinate coord, ctype x, ctype y);
   bool isOnPoint(GlobalCoordinate coord, GlobalCoordinate point);
+
+  Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
 
 };
 
@@ -331,3 +347,111 @@ void MortarHelper<GridType>::periodicBCsMortar() {
   L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
   */
 }
+
+
+template<class GridType>
+Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
+							       const BoundaryGrid& interface,
+							       int dir)
+{
+  /*
+  std::vector< std::set<int> > adj;
+  adj.resize(A.getEqns());
+
+  // process pillar by pillar
+  size_t per_pillar = b1.size()/interface.size();
+  for (size_t p=0;p<interface.size();++p) {
+    for (size_t q=0;q<per_pillar;++q) {
+      for (size_t i=0;i<4;++i) {
+        for (size_t d=0;d<3;++d) {
+          MPC* mpc = A.getMPC(b1[p*per_pillar+q].v[i].i,d);
+          if (mpc) {
+            for (int n=0;n<mpc->getNoMaster();++n) {
+              int dof = A.getEquationForDof(mpc->getMaster(n).node,d);
+              if (dof > -1) {
+                for (int j=0;j<4;++j)
+                  adj[dof].insert(3*interface[p].v[j].i+d);
+              }
+            }
+          } else {
+            int dof = A.getEquationForDof(b1[p*per_pillar+q].v[i].i,d);
+            if (dof > -1) {
+              for (int j=0;j<4;++j)
+                adj[dof].insert(3*interface[p].v[j].i+d);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Matrix B;
+  MatrixOps::fromAdjacency(B,adj,A.getEqns(),3*interface.totalNodes());
+
+  // get a set of P1 shape functions for the velocity
+  P1ShapeFunctionSet<ctype,ctype,2> ubasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
+  // get a set of P1 shape functions for multipliers
+  P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
+  // get a reference element
+  Dune::GeometryType gt;
+  gt.makeCube(2);
+  const Dune::template GenericReferenceElement<ctype,2> &ref =
+    Dune::GenericReferenceElements<ctype,2>::general(gt);
+  // get a quadrature rule
+  const Dune::QuadratureRule<ctype,2>& rule = 
+                        Dune::QuadratureRules<ctype,2>::rule(gt,2);
+
+  // do the assembly loop
+  typename Dune::QuadratureRule<ctype,2>::const_iterator r;
+  for (size_t p=0;p<interface.size();++p) {
+    const BoundaryGrid::Quad& qi(interface[p]);
+    HexGeometry<2,2,GridType> lg(qi);
+    for (size_t q=0;q<per_pillar;++q) {
+      const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+      HexGeometry<2,2,GridType> hex(qu,gv,dir);
+      Dune::FieldMatrix<ctype,4,4> E;
+      E = 0;
+      for (r = rule.begin(); r != rule.end();++r) {
+        ctype detJ = hex.integrationElement(r->position());
+        if (detJ < 0)
+          continue;
+        typename HexGeometry<2,2,GridType>::LocalCoordinate loc = 
+                                        lg.local(hex.global(r->position()));
+        for (int i=0;i<4;++i) {
+          for (int j=0;j<4;++j)
+            E[i][j] += ubasis[i].evaluateFunction(r->position())*
+                       lbasis[j].evaluateFunction(loc)*detJ*r->weight();
+        }
+      }
+      // and assemble element contributions
+      for (int d=0;d<3;++d) {
+        for (int i=0;i<4;++i) {
+          MPC* mpc = A.getMPC(qu.v[i].i,d);
+          if (mpc) {
+            for (int n=0;n<mpc->getNoMaster();++n) {
+              int indexi = A.getEquationForDof(mpc->getMaster(n).node,d);
+              if (indexi > -1) {
+                for (int j=0;j<4;++j) {
+                  int indexj = qi.v[j].i*3+d;
+                  B[indexi][indexj] += E[i][j];
+                }
+              }
+            }
+          } else {
+            int indexi = A.getEquationForDof(qu.v[i].i,d);
+            if (indexi > -1) {
+              for (int j=0;j<4;++j) {
+                int indexj = qi.v[j].i*3+d;
+                B[indexi][indexj] += E[i][j];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return B;
+  */
+}
+
