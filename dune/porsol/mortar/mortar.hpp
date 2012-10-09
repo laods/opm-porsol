@@ -1,3 +1,8 @@
+
+#ifndef MORTAR_HPP
+#define MORTAR_HPP
+
+
 #include <vector>
 
 #include <dune/grid/CpGrid.hpp>
@@ -33,7 +38,7 @@ public:
   MortarHelper() {};
 
   MortarHelper(const GridType& gv)
-    : gv_(gv) 
+    : pgv_(&gv) 
   {
     findMinMax();
     find_n();
@@ -42,7 +47,7 @@ public:
 
   MortarHelper(const GridType& gv, std::vector<ctype> min,
 	       std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
-    : gv_(gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
+    : pgv_(&gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
 
   std::vector<double> min();
   std::vector<double> max();
@@ -65,7 +70,7 @@ private:
   std::vector<double> max_;
   int n1_;
   int n2_;
-  const GridType& gv_;
+  const GridType* pgv_;
   
   enum SIDE {
     LEFT,
@@ -131,9 +136,9 @@ void MortarHelper<GridType>::findMinMax() {
   if (max_.empty()) max_.resize(3,-big);
   else max_[0] = max_[1] = max_[2] = -big;
 
-  const LeafVertexIterator itend = gv_.leafView().template end<dim>();
+  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
   // iterate over vertices and find slaves
-  LeafVertexIterator start = gv_.leafView().template begin<dim>();
+  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
   for (LeafVertexIterator it = start; it != itend; ++it) {
     for (int i=0;i<3;++i) {
       min_[i] = std::min(min_[i],it->geometry().corner(0)[i]);
@@ -144,22 +149,22 @@ void MortarHelper<GridType>::findMinMax() {
 
 template<class GridType>
 void MortarHelper<GridType>::find_n() {
-  n1_ = gv_.logicalCartesianSize()[0];
-  n2_ = gv_.logicalCartesianSize()[1];
+  n1_ = pgv_->logicalCartesianSize()[0];
+  n2_ = pgv_->logicalCartesianSize()[1];
 }
 
 template<class GridType>
 std::vector<BoundaryGrid::Vertex> MortarHelper<GridType>::extractFace(Direction dir, ctype coord) {
   // Based on ElasticityUpscale::extractFaces
   std::vector<BoundaryGrid::Vertex> result;
-  const LeafIndexSet& set = gv_.leafView().indexSet();
-  const LeafVertexIterator itend = gv_.leafView().template end<dim>();
+  const LeafIndexSet& set = pgv_->leafView().indexSet();
+  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
 
   // make a mapper for codim dim entities in the leaf grid 
   Dune::LeafMultipleCodimMultipleGeomTypeMapper<GridType,
-                                            Dune::MCMGVertexLayout> mapper(gv_);
+                                            Dune::MCMGVertexLayout> mapper(*pgv_);
   // iterate over vertices and find slaves
-  LeafVertexIterator start = gv_.leafView().template begin<dim>();
+  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
   for (LeafVertexIterator it = start; it != itend; ++it) {
     if (isOnPlane(dir,it->geometry().corner(0),coord)) {
       BoundaryGrid::Vertex v;
@@ -185,18 +190,18 @@ BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir,
   static const int V2[3][4] = {{1,3,5,7},
                                {2,3,6,7},
                                {4,5,6,7}};
-  const LeafIndexSet& set = gv_.leafView().indexSet();
-  const LeafVertexIterator itend = gv_.leafView().template end<dim>();
+  const LeafIndexSet& set = pgv_->leafView().indexSet();
+  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
 
   // make a mapper for codim dim entities in the leaf grid 
   Dune::LeafMultipleCodimMultipleGeomTypeMapper<GridType,
-                                            Dune::MCMGVertexLayout> mapper(gv_);
-  LeafVertexIterator start = gv_.leafView().template begin<dim>();
-  LeafIterator cellend = gv_.leafView().template end<0>();
+                                            Dune::MCMGVertexLayout> mapper(*pgv_);
+  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
+  LeafIterator cellend = pgv_->leafView().template end<0>();
   int c = 0;
   int i = log2(dir);
   BoundaryGrid result;
-  for (LeafIterator cell  = gv_.leafView().template begin<0>(); 
+  for (LeafIterator cell  = pgv_->leafView().template begin<0>(); 
                     cell != cellend; ++cell, ++c) {
     std::vector<BoundaryGrid::Vertex> verts;
     int idx; 
@@ -426,7 +431,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
     HexGeometry<2,2,GridType> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
       const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-      HexGeometry<2,2,GridType> hex(qu,gv,dir);
+      HexGeometry<2,2,GridType> hex(qu,&pgv_,dir);
       Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
       for (r = rule.begin(); r != rule.end();++r) {
@@ -489,3 +494,4 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
   */
 }
 
+#endif // MORTAR_HPP

@@ -140,6 +140,9 @@ int main(int varnum, char** vararg)
 
   solver.solve(rockParams, sat, fbc, src);
 
+  double mod = solver.postProcessFluxes();
+  cout << "Max mod: " << mod << endl;
+
   // Play with shape functions
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
   P0ShapeFunctionSet<ctype,ctype,2> ubasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
