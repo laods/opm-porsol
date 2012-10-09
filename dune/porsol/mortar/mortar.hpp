@@ -49,6 +49,30 @@ public:
 	       std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
     : pgv_(&gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
 
+  void init(const GridType& gv) 
+  {
+    pgv_ = &gv;
+    findMinMax();
+    find_n();
+    tol_ = 1e-8;
+  }
+  
+  void init(const GridType& gv, std::vector<ctype> min,
+	    std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
+  {
+    pgv_ = &gv;
+    min_ = min;  max_ = max;
+    n1_  = n1;   n2 = n2_;
+    tol_ = tol;
+  }
+
+  void clear()
+  {
+    n1_ = n2_ = 0;
+    min_ = max_ = 0;
+    pgv_ = 0;
+  }
+
   std::vector<double> min();
   std::vector<double> max();
   int n1();
@@ -92,7 +116,7 @@ private:
 
   Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
 
-};
+}; // MortarHelper
 
 
 template<class GridType>
