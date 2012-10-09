@@ -481,7 +481,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
           }
         }
       }
-      */
+      
     }
   }
 

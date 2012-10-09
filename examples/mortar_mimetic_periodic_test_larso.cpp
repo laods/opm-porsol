@@ -21,6 +21,7 @@
 
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/porsol/mortar/IncompFlowSolverHybridMortar.hpp>
 
 #include <dune/porsol/mortar/mortar.hpp>
 #include <dune/porsol/mortar/shapefunctions.hh>
@@ -38,7 +39,7 @@ int main(int varnum, char** vararg)
   typedef CI  ::FaceIterator                                     FI;
   typedef Dune::BasicBoundaryConditions<true, false>             BCs;
   typedef Dune::ReservoirPropertyCapillary<3>                    RI;
-  typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs, Dune::MimeticIPEvaluator> FlowSolver;
+  typedef Dune::IncompFlowSolverHybridMortar<GI, RI, BCs, Dune::MimeticIPEvaluator> FlowSolver;
 
   typedef double ctype; // To be used in shapefunctions
 
