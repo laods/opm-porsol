@@ -10,6 +10,8 @@
 #include <dune/porsol/mortar/matrixops.hpp>
 #include <dune/porsol/mortar/shapefunctions.hh>
 
+#include <dune/geometry/quadraturerules.hh>
+
 //! \brief A sparse matrix holding our operator
 typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;
 
@@ -29,6 +31,7 @@ public:
   typedef typename GridType::LeafGridView::ctype ctype;
   typedef typename GridType::LeafGridView::IndexSet LeafIndexSet;
   typedef typename GridType::LeafGridView::template Codim<dim>::Iterator LeafVertexIterator;
+  typedef typename GridType::LeafGridView::template Codim<dim-1>::Iterator LeafFaceIterator;
   typedef typename GridType::LeafGridView::template Codim<0>::Iterator LeafIterator;
   typedef typename GridType::LeafGridView::template Codim<1>::Geometry::GlobalCoordinate 
   GlobalCoordinate;
@@ -87,7 +90,9 @@ public:
   // Print vertices on face quads with global index and coord
   void printFace(int face);
 
-  void periodicBCsMortar();
+  void periodicBCsMortar(int nEqns);
+
+  void setupDofEqnMapper();
 
 private:
   std::vector<double> min_;
@@ -114,7 +119,10 @@ private:
   bool isOnLine(Direction dir, GlobalCoordinate coord, ctype x, ctype y);
   bool isOnPoint(GlobalCoordinate coord, GlobalCoordinate point);
 
-  Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
+  Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir,
+			   int nEqns);
+
+  int getEquationForDof(Quad& quad);
 
 }; // MortarHelper
 
@@ -344,7 +352,7 @@ void MortarHelper<GridType>::printFace(int face) {
 }
 
 template<class GridType>
-void MortarHelper<GridType>::periodicBCsMortar() {
+void MortarHelper<GridType>::periodicBCsMortar(int nEqns) {
 
   // Based on ElasticityUpscale::periodicBCsMortar()
   // But not MPC part (that is only step 3-6)
@@ -362,31 +370,32 @@ void MortarHelper<GridType>::periodicBCsMortar() {
   fmax[0] = max_[1]; fmax[1] = max_[2];
   BoundaryGrid lambdax = BoundaryGrid::uniform(fmin, fmax, n2_, 1, true);
   
+  std::cout << lambdax << std::endl;
+
   fmin[0] = min_[0]; fmin[1] = min_[2];
   fmax[0] = max_[0]; fmax[1] = max_[2];
   BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, true);
 
-  /*
   // Step 5: Calculates the coupling matrix L1 between left/right sides
-  Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0);
-  Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0);
+  Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0, nEqns);
+  Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0, nEqns);
   L.push_back(MatrixOps::Axpy(L1_left, L1_right, -1));
 
   // Step 6: Calculates the coupling matrix L1 between front/back sides
-  Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1);
-  Matrix L2_right = findLMatrixMortar(master[3], lambday, 1);
+  Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1, nEqns);
+  Matrix L2_right = findLMatrixMortar(master[3], lambday, 1, nEqns);
   L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
-  */
 }
 
 
 template<class GridType>
 Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
 						 const BoundaryGrid& interface,
-						 int dir)
+						 int dir,
+						 int nEqns)
 {
   std::vector< std::set<int> > adj;
-  //adj.resize(A.getEqns());
+  adj.resize(nEqns);
 
   // process pillar by pillar
   size_t per_pillar = b1.size()/interface.size();
@@ -400,13 +409,12 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
 	// Check for MPC not nescessary (as it is in elasticity upscale)
 	
 	// Own code:
-	/*
-	int dof = getEquationForDof(face);
+	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+	int dof = getEquationForDof(qu);
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i); 
 	  // No need for multiplying with 3 (only one DOF per vertex)
 	}
-	*/
 	  
 	// Original implementation from elasticity:
 	/*
@@ -431,9 +439,8 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
     }
   }
 
-  /*
   Matrix B;
-  MatrixOps::fromAdjacency(B,adj,A.getEqns(),interface.totalNodes()); // Fix getEqns()
+  MatrixOps::fromAdjacency(B,adj,nEqns,interface.totalNodes());
 
   // get a set of P0 shape functions for the face pressures
   P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
@@ -446,7 +453,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
     Dune::GenericReferenceElements<ctype,2>::general(gt);
   // get a quadrature rule
   const Dune::QuadratureRule<ctype,2>& rule = 
-                        Dune::QuadratureRules<ctype,2>::rule(gt,2);
+    Dune::QuadratureRules<ctype,2>::rule(gt,2);
 
   // do the assembly loop
   typename Dune::QuadratureRule<ctype,2>::const_iterator r;
@@ -455,7 +462,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
     HexGeometry<2,2,GridType> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
       const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-      HexGeometry<2,2,GridType> hex(qu,&pgv_,dir);
+      HexGeometry<2,2,GridType> hex(qu,*pgv_,dir);
       Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
       for (r = rule.begin(); r != rule.end();++r) {
@@ -475,7 +482,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
       // Own code:
       for (int i=0;i<1;++i) {
 	// No need to check for MPC
-	int indexi = A.getEquationForDof(qu.v[i].i,d); // Fix
+	int indexi = getEquationForDof(qu);
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
 	    int indexj = qi.v[j].i;
@@ -510,12 +517,93 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
           }
         }
       }
-      
+      */
     }
   }
 
   return B;
-  */
 }
+
+
+template<class GridType>
+int MortarHelper<GridType>::getEquationForDof(Quad& quad)
+{
+  LeafFaceIterator itFaceStart = pgv_->leafView().template begin<dim-1>();
+  LeafFaceIterator itFaceEnd   = pgv_->leafView().template end<dim-1>();
+
+  int vertexIdx[4] = {{quad.v[0].i, 
+		       quad.v[1].i,
+		       quad.v[2].i,
+		       quad.v[3].i}};
+
+  // Find global vertex coordinates
+  vector<GlobalCoordinate> vertices;
+  vertices.push_back(pgv_->vertexPosition(vertexIdx[0]));
+  vertices.push_back(pgv_->vertexPosition(vertexIdx[1]));
+  vertices.push_back(pgv_->vertexPosition(vertexIdx[2]));
+  vertices.push_back(pgv_->vertexPosition(vertexIdx[3]));
+
+  GlobalCoordinate faceCenter = centroid(vertices);
+
+  int i = 0;
+  for (LeafFaceIterator itFace = itFaceStart; itFace != itFaceEnd; ++itFace, ++i) {
+    GlobalCoordinate centerDiff = faceCenter - itFace->centroid();
+    if (centerDiff.two_norm() < tol_) {
+      return i;
+    }
+  }
+  return -1;    
+}
+
+
+typedef MortarHelper<GridType>::GlobalCoordinate GC;
+
+GC centroid(vector<GC> vertices)
+{
+  GC result = 0;
+  double signedArea = 0.0;
+  double x0 = 0.0; // Current vertex X
+  double y0 = 0.0; // Current vertex Y
+  double z0 = 0.0; // Current vertex Z
+  double x1 = 0.0; // Next vertex X
+  double y1 = 0.0; // Next vertex Y  
+  double z1 = 0.0; // Next vertex Z
+  double a = 0.0;  // Partial signed area
+  int vertexCount = vertices.size();
+
+  // For all vertices except last
+  int i=0;
+  for (i=0; i<vertexCount-1; ++i)
+    {
+      x0 = vertices[i][0];
+      y0 = vertices[i][1];
+      z0 = vertices[i][2];
+      x1 = vertices[i+1][0];
+      y1 = vertices[i+1][1];
+      z1 = vertices[i+1][2];
+      a = x0*y1 - x1*y0;
+      signedArea += a;
+      centroid[0] += (x0 + x1)*a;
+      centroid[1] += (y0 + y1)*a;
+      //centroid[2] += 
+    }
+
+  // Do last vertex
+  x0 = vertices[i].x;
+  y0 = vertices[i].y;
+  x1 = vertices[0].x;
+  y1 = vertices[0].y;
+  a = x0*y1 - x1*y0;
+  signedArea += a;
+  centroid.x += (x0 + x1)*a;
+  centroid.y += (y0 + y1)*a;
+
+  signedArea *= 0.5;
+  centroid.x /= (6*signedArea);
+  centroid.y /= (6*signedArea);
+
+  return result;
+}
+
 
 #endif // MORTAR_HPP

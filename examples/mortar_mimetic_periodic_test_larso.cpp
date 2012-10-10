@@ -102,15 +102,6 @@ int main(int varnum, char** vararg)
     }
   }
 
-  MortarHelper<CpGrid> mortar(grid);
-  cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
-  cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
-  cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
-
-  //mortar.printFace(1);
-  //mortar.printFace(2);
-  //mortar.printFace(6);
-  mortar.periodicBCsMortar();
 
   CI::Vector gravity;
   gravity[0] = gravity[1] = gravity[2] = 0.0;
@@ -142,6 +133,8 @@ int main(int varnum, char** vararg)
 
   double mod = solver.postProcessFluxes();
   cout << "Max mod: " << mod << endl;
+
+  solver.printStats(std::cout);
 
   // Play with shape functions
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
@@ -191,6 +184,16 @@ int main(int varnum, char** vararg)
     writer.addCellData(cellPressure, "cellPressure");
     writer.write(vtufile);
   }
+
+  MortarHelper<CpGrid> mortar(grid);
+  cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
+  cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
+  cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
+
+  //mortar.printFace(1);
+  //mortar.printFace(2);
+  //mortar.printFace(6);
+  mortar.periodicBCsMortar(1060);
 
   return 0;
 }
