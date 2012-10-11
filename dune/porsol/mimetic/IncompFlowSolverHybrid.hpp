@@ -662,7 +662,7 @@ namespace Dune {
             computePressureAndFluxes(r, sat);
         }
 
-    private:
+    protected:
         /// A helper class for postProcessFluxes.
         class FaceFluxes
         {
@@ -864,7 +864,7 @@ namespace Dune {
                       std::ostream_iterator<VectorBlockType>(rhs, "\n"));
         }
 
-    private:
+    protected:
         typedef std::pair<int,int>                 DofID;
         typedef std::tr1::unordered_map<int,DofID> BdryIdMapType;
         typedef BdryIdMapType::const_iterator      BdryIdMapIterator;
