@@ -35,6 +35,10 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
+#error IncompFlowSolverHybrid.hpp is already included!
+#endif
+
 #ifndef OPENRS_INCOMPFLOWSOLVERHYBRIDMORTAR_HEADER
 #define OPENRS_INCOMPFLOWSOLVERHYBRIDMORTAR_HEADER
 

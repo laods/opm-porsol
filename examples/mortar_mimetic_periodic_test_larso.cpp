@@ -20,7 +20,7 @@
 #include <dune/porsol/common/ReservoirPropertyCapillary.hpp>
 
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
-#include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
+//#include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/porsol/mortar/IncompFlowSolverHybridMortar.hpp>
 
 #include <dune/porsol/mortar/mortar.hpp>
