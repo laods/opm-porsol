@@ -22,48 +22,49 @@ typedef Dune::BlockVector<Dune::FieldVector<double,1> > Vector;
 typedef std::vector< std::set<int> > AdjacencyPattern;
 
 // Helper class for mortar methods
-template<class GridType>
+template<class GridInterface>
 class MortarHelper 
 {
 public:
 
+  typedef typename GridInterface::GridType GridType;
   static const int dim = GridType::dimension;
-  typedef typename GridType::LeafGridView::ctype ctype;
-  typedef typename GridType::LeafGridView::IndexSet LeafIndexSet;
-  typedef typename GridType::LeafGridView::template Codim<dim>::Iterator LeafVertexIterator;
-  typedef typename GridType::LeafGridView::template Codim<dim-1>::Iterator LeafFaceIterator;
-  typedef typename GridType::LeafGridView::template Codim<0>::Iterator LeafIterator;
-  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::GlobalCoordinate 
-  GlobalCoordinate;
-  typedef typename GridType::LeafGridView::template Codim<1>::Geometry::LocalCoordinate 
-  LocalCoordinate;
+
+  typedef typename GridType::LeafGridView LeafGridView;
+  typedef typename LeafGridView::ctype ctype;
+  typedef typename LeafGridView::IndexSet LeafIndexSet;
+  typedef typename LeafGridView::template Codim<dim>::Iterator LeafVertexIterator;
+  typedef typename LeafGridView::template Codim<dim-1>::Iterator LeafFaceIterator;
+  typedef typename LeafGridView::template Codim<0>::Iterator LeafIterator;
+  typedef typename LeafGridView::template Codim<1>::Geometry::GlobalCoordinate GlobalCoordinate;
+  typedef typename LeafGridView::template Codim<1>::Geometry::LocalCoordinate LocalCoordinate;
 
   MortarHelper() {};
 
-  MortarHelper(const GridType& gv)
-    : pgv_(&gv) 
+  MortarHelper(const GridInterface& grid)
+    : pgrid_(&grid) 
   {
     findMinMax();
     find_n();
     tol_ = 1e-8;
   };
 
-  MortarHelper(const GridType& gv, std::vector<ctype> min,
+  MortarHelper(const GridInterface& grid, std::vector<ctype> min,
 	       std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
-    : pgv_(&gv), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
+    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
 
-  void init(const GridType& gv) 
+  void init(const GridInterface& grid) 
   {
-    pgv_ = &gv;
+    pgrid_ = &grid;
     findMinMax();
     find_n();
     tol_ = 1e-8;
   }
   
-  void init(const GridType& gv, std::vector<ctype> min,
+  void init(const GridInterface& grid, std::vector<ctype> min,
 	    std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
   {
-    pgv_ = &gv;
+    pgrid_ = &grid;
     min_ = min;  max_ = max;
     n1_  = n1;   n2 = n2_;
     tol_ = tol;
@@ -73,7 +74,7 @@ public:
   {
     n1_ = n2_ = 0;
     min_ = max_ = 0;
-    pgv_ = 0;
+    pgrid_ = 0;
   }
 
   std::vector<double> min();
@@ -99,7 +100,7 @@ private:
   std::vector<double> max_;
   int n1_;
   int n2_;
-  const GridType* pgv_;
+  const GridInterface* pgrid_;
   
   enum SIDE {
     LEFT,
@@ -129,40 +130,40 @@ private:
 }; // MortarHelper
 
 
-template<class GridType>
-std::vector<double> MortarHelper<GridType>::min() {
+template<class GridInterface>
+std::vector<double> MortarHelper<GridInterface>::min() {
   return min_;
 }
 
-template<class GridType>
-std::vector<double> MortarHelper<GridType>::max() {
+template<class GridInterface>
+std::vector<double> MortarHelper<GridInterface>::max() {
   return max_;
 }
 
-template<class GridType>
-int MortarHelper<GridType>::n1() {
+template<class GridInterface>
+int MortarHelper<GridInterface>::n1() {
   return n1_;
 }
 
-template<class GridType>
-int MortarHelper<GridType>::n2() {
+template<class GridInterface>
+int MortarHelper<GridInterface>::n2() {
   return n2_;
 }
 
-template<class GridType>
-void MortarHelper<GridType>::setMinMax(std::vector<double> min, std::vector<double> max) {
+template<class GridInterface>
+void MortarHelper<GridInterface>::setMinMax(std::vector<double> min, std::vector<double> max) {
   min_ = min;
   max_ = max;
 }
 
-template<class GridType>
-void MortarHelper<GridType>::set_n(int n1, int n2) {
+template<class GridInterface>
+void MortarHelper<GridInterface>::set_n(int n1, int n2) {
   n1_ = n1;
   n2_ = n2;
 }
 
-template<class GridType>
-void MortarHelper<GridType>::findMinMax() {
+template<class GridInterface>
+void MortarHelper<GridInterface>::findMinMax() {
   // Based on ElasticityUpscale::findBoundaries()
   double big = 1e5;
   if (min_.empty()) min_.resize(3,big);
@@ -170,9 +171,9 @@ void MortarHelper<GridType>::findMinMax() {
   if (max_.empty()) max_.resize(3,-big);
   else max_[0] = max_[1] = max_[2] = -big;
 
-  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
+  const LeafVertexIterator itend = pgrid_->grid().leafView().template end<dim>();
   // iterate over vertices and find slaves
-  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
+  LeafVertexIterator start = pgrid_->grid().leafView().template begin<dim>();
   for (LeafVertexIterator it = start; it != itend; ++it) {
     for (int i=0;i<3;++i) {
       min_[i] = std::min(min_[i],it->geometry().corner(0)[i]);
@@ -181,24 +182,25 @@ void MortarHelper<GridType>::findMinMax() {
   }
 }
 
-template<class GridType>
-void MortarHelper<GridType>::find_n() {
-  n1_ = pgv_->logicalCartesianSize()[0];
-  n2_ = pgv_->logicalCartesianSize()[1];
+template<class GridInterface>
+void MortarHelper<GridInterface>::find_n() {
+  n1_ = pgrid_->grid().logicalCartesianSize()[0];
+  n2_ = pgrid_->grid().logicalCartesianSize()[1];
 }
 
-template<class GridType>
-std::vector<BoundaryGrid::Vertex> MortarHelper<GridType>::extractFace(Direction dir, ctype coord) {
+template<class GridInterface>
+std::vector<BoundaryGrid::Vertex> MortarHelper<GridInterface>::extractFace(Direction dir, ctype coord) {
   // Based on ElasticityUpscale::extractFaces
+  GridType gv =  pgrid_->grid();
   std::vector<BoundaryGrid::Vertex> result;
-  const LeafIndexSet& set = pgv_->leafView().indexSet();
-  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
+  const LeafIndexSet& set = gv.leafView().indexSet();
+  const LeafVertexIterator itend = gv.leafView().template end<dim>();
 
   // make a mapper for codim dim entities in the leaf grid 
   Dune::LeafMultipleCodimMultipleGeomTypeMapper<GridType,
-                                            Dune::MCMGVertexLayout> mapper(*pgv_);
+                                            Dune::MCMGVertexLayout> mapper(gv);
   // iterate over vertices and find slaves
-  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
+  LeafVertexIterator start = gv.leafView().template begin<dim>();
   for (LeafVertexIterator it = start; it != itend; ++it) {
     if (isOnPlane(dir,it->geometry().corner(0),coord)) {
       BoundaryGrid::Vertex v;
@@ -211,31 +213,33 @@ std::vector<BoundaryGrid::Vertex> MortarHelper<GridType>::extractFace(Direction 
   return result;
 }
 
-template<class GridType>
-BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir, 
+template<class GridInterface>
+BoundaryGrid MortarHelper<GridInterface>::extractMasterFace(Direction dir, 
 						       ctype coord,
 						       SIDE side,
 						       bool dc) 
 {
   // Based on ElasticityUpscale::extractMasterFace
+  GridType gv =  pgrid_->grid();
+
   static const int V1[3][4] = {{0,2,4,6},
                                {0,1,4,5},
                                {0,1,2,3}};
   static const int V2[3][4] = {{1,3,5,7},
                                {2,3,6,7},
                                {4,5,6,7}};
-  const LeafIndexSet& set = pgv_->leafView().indexSet();
-  const LeafVertexIterator itend = pgv_->leafView().template end<dim>();
+  const LeafIndexSet& set = gv.leafView().indexSet();
+  const LeafVertexIterator itend = gv.leafView().template end<dim>();
 
   // make a mapper for codim dim entities in the leaf grid 
   Dune::LeafMultipleCodimMultipleGeomTypeMapper<GridType,
-                                            Dune::MCMGVertexLayout> mapper(*pgv_);
-  LeafVertexIterator start = pgv_->leafView().template begin<dim>();
-  LeafIterator cellend = pgv_->leafView().template end<0>();
+                                            Dune::MCMGVertexLayout> mapper(gv);
+  LeafVertexIterator start = gv.leafView().template begin<dim>();
+  LeafIterator cellend = gv.leafView().template end<0>();
   int c = 0;
   int i = log2(dir);
   BoundaryGrid result;
-  for (LeafIterator cell  = pgv_->leafView().template begin<0>(); 
+  for (LeafIterator cell  = gv.leafView().template begin<0>(); 
                     cell != cellend; ++cell, ++c) {
     std::vector<BoundaryGrid::Vertex> verts;
     int idx; 
@@ -285,8 +289,8 @@ BoundaryGrid MortarHelper<GridType>::extractMasterFace(Direction dir,
   return result;
 }
 
-template<class GridType>
-bool MortarHelper<GridType>::isOnPlane(Direction plane,
+template<class GridInterface>
+bool MortarHelper<GridInterface>::isOnPlane(Direction plane,
                                             GlobalCoordinate coord,
                                             ctype value)
 {
@@ -297,8 +301,8 @@ bool MortarHelper<GridType>::isOnPlane(Direction plane,
   return delta < tol_;
 }
 
-template<class GridType>
-bool MortarHelper<GridType>::isOnLine(Direction dir,
+template<class GridInterface>
+bool MortarHelper<GridInterface>::isOnLine(Direction dir,
                                            GlobalCoordinate coord,
                                            ctype x, ctype y)
 {
@@ -316,16 +320,16 @@ bool MortarHelper<GridType>::isOnLine(Direction dir,
   return true;
 }
 
-template<class GridType>
-bool MortarHelper<GridType>::isOnPoint(GlobalCoordinate coord,
+template<class GridInterface>
+bool MortarHelper<GridInterface>::isOnPoint(GlobalCoordinate coord,
                                             GlobalCoordinate point)
 {
   GlobalCoordinate delta = point-coord;
   return delta.one_norm() < tol_;
 }
 
-template<class GridType>
-void MortarHelper<GridType>::printFace(int face) {
+template<class GridInterface>
+void MortarHelper<GridInterface>::printFace(int face) {
   BoundaryGrid bg;
   switch (face) {
   case 1: // xmin
@@ -353,8 +357,8 @@ void MortarHelper<GridType>::printFace(int face) {
   std::cout << bg << std::endl;
 }
 
-template<class GridType>
-void MortarHelper<GridType>::periodicBCsMortar(int nEqns) {
+template<class GridInterface>
+void MortarHelper<GridInterface>::periodicBCsMortar(int nEqns) {
 
   // Based on ElasticityUpscale::periodicBCsMortar()
   // But not MPC part (that is only step 3-6)
@@ -390,12 +394,13 @@ void MortarHelper<GridType>::periodicBCsMortar(int nEqns) {
 }
 
 
-template<class GridType>
-Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
+template<class GridInterface>
+Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 						 const BoundaryGrid& interface,
 						 int dir,
 						 int nEqns)
 {
+  GridType gv =  pgrid_->grid();
   std::vector< std::set<int> > adj;
   adj.resize(nEqns);
 
@@ -461,17 +466,17 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
   typename Dune::QuadratureRule<ctype,2>::const_iterator r;
   for (size_t p=0;p<interface.size();++p) {
     const BoundaryGrid::Quad& qi(interface[p]);
-    HexGeometry<2,2,GridType> lg(qi);
+    HexGeometry<2,2,GridInterface> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
       const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-      HexGeometry<2,2,GridType> hex(qu,*pgv_,dir);
+      HexGeometry<2,2,GridInterface> hex(qu,gv,dir); // Error here. Solve!
       Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
       for (r = rule.begin(); r != rule.end();++r) {
         ctype detJ = hex.integrationElement(r->position());
         if (detJ < 0)
           continue;
-        typename HexGeometry<2,2,GridType>::LocalCoordinate loc = 
+        typename HexGeometry<2,2,GridInterface>::LocalCoordinate loc = 
                                         lg.local(hex.global(r->position()));
         for (int i=0;i<pbasis.size();++i) {
           for (int j=0;j<lbasis.size();++j)
@@ -526,11 +531,12 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
   return B;
 }
 
-template<class GridType>
-int MortarHelper<GridType>::getEquationForDof(const BoundaryGrid::Quad& quad, int dir)
+template<class GridInterface>
+int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& quad, int dir)
 {
-  LeafFaceIterator itFaceStart = pgv_->leafView().template begin<dim-1>();
-  LeafFaceIterator itFaceEnd   = pgv_->leafView().template end<dim-1>();
+  GridType gv = pgrid_->grid();
+  LeafFaceIterator itFaceStart = gv.leafView().template begin<dim-1>();
+  LeafFaceIterator itFaceEnd   = gv.leafView().template end<dim-1>();
 
   int vertexIdx[4] = {quad.v[0].i, 
 		      quad.v[1].i,
@@ -539,10 +545,10 @@ int MortarHelper<GridType>::getEquationForDof(const BoundaryGrid::Quad& quad, in
 
   // Find global vertex coordinates
   std::vector<GlobalCoordinate> vertices;
-  vertices.push_back(pgv_->vertexPosition(vertexIdx[0]));
-  vertices.push_back(pgv_->vertexPosition(vertexIdx[1]));
-  vertices.push_back(pgv_->vertexPosition(vertexIdx[2]));
-  vertices.push_back(pgv_->vertexPosition(vertexIdx[3]));
+  vertices.push_back(gv.vertexPosition(vertexIdx[0]));
+  vertices.push_back(gv.vertexPosition(vertexIdx[1]));
+  vertices.push_back(gv.vertexPosition(vertexIdx[2]));
+  vertices.push_back(gv.vertexPosition(vertexIdx[3]));
 
   GlobalCoordinate faceCentroid = centroid(vertices,dir);
 
@@ -558,9 +564,9 @@ int MortarHelper<GridType>::getEquationForDof(const BoundaryGrid::Quad& quad, in
   return 1;    
 }
 
-template<class GridType>
-typename MortarHelper<GridType>::GlobalCoordinate 
-MortarHelper<GridType>::centroid(std::vector<MortarHelper<GridType>::GlobalCoordinate> vertices, int dir)
+template<class GridInterface>
+typename MortarHelper<GridInterface>::GlobalCoordinate 
+MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::GlobalCoordinate> vertices, int dir)
 {
   // Calculates 3D centroid of a quad defined by vertices. 
   // Assumes that all vertices lie in the same plane (XY, XZ or YZ)

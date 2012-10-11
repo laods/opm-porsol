@@ -185,7 +185,7 @@ int main(int varnum, char** vararg)
     writer.write(vtufile);
   }
 
-  MortarHelper<CpGrid> mortar(grid);
+  MortarHelper<GI> mortar(g);
   cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
