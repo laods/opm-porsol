@@ -122,7 +122,9 @@ private:
   Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir,
 			   int nEqns);
 
-  int getEquationForDof(Quad& quad);
+  int getEquationForDof(const BoundaryGrid::Quad& quad, int dir);
+
+  GlobalCoordinate centroid(std::vector<GlobalCoordinate> vertices, int dir);
 
 }; // MortarHelper
 
@@ -410,7 +412,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
 	
 	// Own code:
 	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-	int dof = getEquationForDof(qu,dir);
+	int dof = getEquationForDof(qu, dir);
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i); 
 	  // No need for multiplying with 3 (only one DOF per vertex)
@@ -524,20 +526,19 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
   return B;
 }
 
-
 template<class GridType>
-int MortarHelper<GridType>::getEquationForDof(Quad& quad, int dir)
+int MortarHelper<GridType>::getEquationForDof(const BoundaryGrid::Quad& quad, int dir)
 {
   LeafFaceIterator itFaceStart = pgv_->leafView().template begin<dim-1>();
   LeafFaceIterator itFaceEnd   = pgv_->leafView().template end<dim-1>();
 
-  int vertexIdx[4] = {{quad.v[0].i, 
-		       quad.v[1].i,
-		       quad.v[2].i,
-		       quad.v[3].i}};
+  int vertexIdx[4] = {quad.v[0].i, 
+		      quad.v[1].i,
+		      quad.v[2].i,
+		      quad.v[3].i};
 
   // Find global vertex coordinates
-  vector<GlobalCoordinate> vertices;
+  std::vector<GlobalCoordinate> vertices;
   vertices.push_back(pgv_->vertexPosition(vertexIdx[0]));
   vertices.push_back(pgv_->vertexPosition(vertexIdx[1]));
   vertices.push_back(pgv_->vertexPosition(vertexIdx[2]));
@@ -554,19 +555,18 @@ int MortarHelper<GridType>::getEquationForDof(Quad& quad, int dir)
     }
   }
   */
-  return -1;    
+  return 1;    
 }
 
-
-typedef MortarHelper<GridType>::GlobalCoordinate GC;
-
-GC centroid(vector<GC> vertices, dir)
+template<class GridType>
+typename MortarHelper<GridType>::GlobalCoordinate 
+MortarHelper<GridType>::centroid(std::vector<MortarHelper<GridType>::GlobalCoordinate> vertices, int dir)
 {
   // Calculates 3D centroid of a quad defined by vertices. 
   // Assumes that all vertices lie in the same plane (XY, XZ or YZ)
   
   int coord1, coord2;
-  GC result = 0;
+  GlobalCoordinate result(0.0);
   switch (dir) {
   case 0: // x fixed
     coord1 = 1;
