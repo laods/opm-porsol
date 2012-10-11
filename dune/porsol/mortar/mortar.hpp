@@ -92,7 +92,7 @@ public:
 
   void periodicBCsMortar(int nEqns);
 
-  void setupDofEqnMapper();
+  //void setupDofEqnMapper();
 
 private:
   std::vector<double> min_;
@@ -410,7 +410,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
 	
 	// Own code:
 	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-	int dof = getEquationForDof(qu);
+	int dof = getEquationForDof(qu,dir);
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i); 
 	  // No need for multiplying with 3 (only one DOF per vertex)
@@ -482,7 +482,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
       // Own code:
       for (int i=0;i<1;++i) {
 	// No need to check for MPC
-	int indexi = getEquationForDof(qu);
+	int indexi = getEquationForDof(qu,dir);
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
 	    int indexj = qi.v[j].i;
@@ -526,7 +526,7 @@ Matrix MortarHelper<GridType>::findLMatrixMortar(const BoundaryGrid& b1,
 
 
 template<class GridType>
-int MortarHelper<GridType>::getEquationForDof(Quad& quad)
+int MortarHelper<GridType>::getEquationForDof(Quad& quad, int dir)
 {
   LeafFaceIterator itFaceStart = pgv_->leafView().template begin<dim-1>();
   LeafFaceIterator itFaceEnd   = pgv_->leafView().template end<dim-1>();
@@ -543,8 +543,9 @@ int MortarHelper<GridType>::getEquationForDof(Quad& quad)
   vertices.push_back(pgv_->vertexPosition(vertexIdx[2]));
   vertices.push_back(pgv_->vertexPosition(vertexIdx[3]));
 
-  GlobalCoordinate faceCenter = centroid(vertices);
+  GlobalCoordinate faceCentroid = centroid(vertices,dir);
 
+  /*
   int i = 0;
   for (LeafFaceIterator itFace = itFaceStart; itFace != itFaceEnd; ++itFace, ++i) {
     GlobalCoordinate centerDiff = faceCenter - itFace->centroid();
@@ -552,22 +553,46 @@ int MortarHelper<GridType>::getEquationForDof(Quad& quad)
       return i;
     }
   }
+  */
   return -1;    
 }
 
 
 typedef MortarHelper<GridType>::GlobalCoordinate GC;
 
-GC centroid(vector<GC> vertices)
+GC centroid(vector<GC> vertices, dir)
 {
+  // Calculates 3D centroid of a quad defined by vertices. 
+  // Assumes that all vertices lie in the same plane (XY, XZ or YZ)
+  
+  int coord1, coord2;
   GC result = 0;
+  switch (dir) {
+  case 0: // x fixed
+    coord1 = 1;
+    coord2 = 2;
+    result[0] = vertices[0][0];
+    break;
+  case 1: // y fixed
+    coord1 = 0;
+    coord2 = 2;
+    result[1] = vertices[0][1];
+    break;
+  case 2: // z fixed
+    coord1 = 0;
+    coord2 = 1;
+    result[2] = vertices[0][2];
+    break;
+  default:
+    std::cerr << "dir must be either 0(x), 1(y) og 2(z)" << std::endl;
+    break;
+  }
+
   double signedArea = 0.0;
-  double x0 = 0.0; // Current vertex X
-  double y0 = 0.0; // Current vertex Y
-  double z0 = 0.0; // Current vertex Z
+  double x0 = 0.0; // Current vertex X (coord1)
+  double y0 = 0.0; // Current vertex Y (coord2)
   double x1 = 0.0; // Next vertex X
   double y1 = 0.0; // Next vertex Y  
-  double z1 = 0.0; // Next vertex Z
   double a = 0.0;  // Partial signed area
   int vertexCount = vertices.size();
 
@@ -575,32 +600,29 @@ GC centroid(vector<GC> vertices)
   int i=0;
   for (i=0; i<vertexCount-1; ++i)
     {
-      x0 = vertices[i][0];
-      y0 = vertices[i][1];
-      z0 = vertices[i][2];
-      x1 = vertices[i+1][0];
-      y1 = vertices[i+1][1];
-      z1 = vertices[i+1][2];
+      x0 = vertices[i][coord1];
+      y0 = vertices[i][coord2];
+      x1 = vertices[i+1][coord1];
+      y1 = vertices[i+1][coord2];
       a = x0*y1 - x1*y0;
       signedArea += a;
-      centroid[0] += (x0 + x1)*a;
-      centroid[1] += (y0 + y1)*a;
-      //centroid[2] += 
+      result[coord1] += (x0 + x1)*a;
+      result[coord2] += (y0 + y1)*a;
     }
 
   // Do last vertex
-  x0 = vertices[i].x;
-  y0 = vertices[i].y;
-  x1 = vertices[0].x;
-  y1 = vertices[0].y;
+  x0 = vertices[i][coord1];
+  y0 = vertices[i][coord2];
+  x1 = vertices[0][coord1];
+  y1 = vertices[0][coord2];
   a = x0*y1 - x1*y0;
   signedArea += a;
-  centroid.x += (x0 + x1)*a;
-  centroid.y += (y0 + y1)*a;
+  result[coord1] += (x0 + x1)*a;
+  result[coord2] += (y0 + y1)*a;
 
   signedArea *= 0.5;
-  centroid.x /= (6*signedArea);
-  centroid.y /= (6*signedArea);
+  result[coord1] /= (6*signedArea);
+  result[coord2] /= (6*signedArea);
 
   return result;
 }
