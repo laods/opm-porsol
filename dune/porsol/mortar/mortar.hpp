@@ -400,7 +400,6 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 						 int dir,
 						 int nEqns)
 {
-  GridType gv =  pgrid_->grid();
   std::vector< std::set<int> > adj;
   adj.resize(nEqns);
 
@@ -461,7 +460,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
   // get a quadrature rule
   const Dune::QuadratureRule<ctype,2>& rule = 
     Dune::QuadratureRules<ctype,2>::rule(gt,2);
-
+  
   // do the assembly loop
   typename Dune::QuadratureRule<ctype,2>::const_iterator r;
   for (size_t p=0;p<interface.size();++p) {
@@ -469,7 +468,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
     HexGeometry<2,2,GridInterface> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
       const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
-      HexGeometry<2,2,GridInterface> hex(qu,gv,dir); // Error here. Solve!
+      HexGeometry<2,2,GridType> hex(qu,pgrid_->grid(),dir);
       Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
       for (r = rule.begin(); r != rule.end();++r) {
