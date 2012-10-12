@@ -400,6 +400,8 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 						 int dir,
 						 int nEqns)
 {
+  // TODO: - test if nEqns can be found from pgrid_->numberOfFaces() 
+
   std::vector< std::set<int> > adj;
   adj.resize(nEqns);
 
@@ -551,16 +553,19 @@ int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& qua
 
   GlobalCoordinate faceCentroid = centroid(vertices,dir);
 
-  /*
-  int i = 0;
-  for (LeafFaceIterator itFace = itFaceStart; itFace != itFaceEnd; ++itFace, ++i) {
-    GlobalCoordinate centerDiff = faceCenter - itFace->centroid();
-    if (centerDiff.two_norm() < tol_) {
-      return i;
+  typedef typename GridInterface::CellIterator CI;
+  typedef typename CI::FaceIterator FI;
+  
+  for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+      if ( (f->boundary()) &&  (isOnPoint(f->centroid(), faceCentroid)) ) {
+	return f->index();
+      }
     }
   }
-  */
-  return 1;    
+
+  std::cerr << "Global index of current quad not found" << std::endl;
+  return -1;
 }
 
 template<class GridInterface>
