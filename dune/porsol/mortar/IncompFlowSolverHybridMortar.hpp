@@ -78,6 +78,8 @@
 #include <dune/porsol/common/BoundaryConditions.hpp>
 #include <dune/porsol/common/Matrix.hpp>
 
+#include <dune/porsol/mortar/mortar.hpp>
+
 namespace Dune {
   namespace {
     /// @brief
