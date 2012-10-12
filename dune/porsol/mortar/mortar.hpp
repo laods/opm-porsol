@@ -73,7 +73,7 @@ public:
   void clear()
   {
     n1_ = n2_ = 0;
-    min_ = max_ = 0;
+    min_ = max_ = std::vector<double>(3,0.0);
     pgrid_ = 0;
   }
 

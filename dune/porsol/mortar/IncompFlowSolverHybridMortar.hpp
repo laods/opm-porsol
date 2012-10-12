@@ -485,6 +485,7 @@ namespace Dune {
 	initSystemStructure(g, bc);
 	computeInnerProducts(r, grav);
       }
+      mortar_.init(*pgrid_);
     }
 
 
@@ -513,6 +514,8 @@ namespace Dune {
       flowSolution_.clear();
 
       cleared_state_ = true;
+
+      mortar_.clear();
     }
 
 
@@ -908,7 +911,7 @@ namespace Dune {
     // Physical quantities (derived)
     FlowSolution flowSolution_;
 
-    MortarHelper mortar_;
+    MortarHelper<GridInterface> mortar_;
 
     // ----------------------------------------------------------------
     void enumerateDof(const GridInterface& g, const BCInterface& bc)
