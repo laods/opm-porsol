@@ -1,14 +1,16 @@
 // This header includes createPeriodic functions analogous to those in 
-// dune/porsol/common/PeriodicHelpers.hpp, but for the Mortar case
+// dune/porsol/common/PeriodicHelpers.hpp, but for the Mortar case.
+// The only change is that it does not search for periodic partners
+// in the X og Y directions.
 
-#include <dune/common/PeriodicHelpers.hpp>
+#include <dune/porsol/common/PeriodicHelpers.hpp>
 
 namespace Dune 
 {
   
   template <class BCs, class GridInterface>
   void createPeriodicMortar(BCs& fbcs,
-			    const GridInterface& g
+			    const GridInterface& g,
 			    const array<FlowBC, 2*GridInterface::Dimension>& fconditions,
 			    double spatial_tolerance = 1e-6)
   {
@@ -23,14 +25,14 @@ namespace Dune
     }
     std::vector<BoundaryFaceInfo> bfinfo;
     array<double, 6> side_areas;
-    createPeriodicImpl(fbcs, bfinfo, side_areas, g, 
+    createPeriodicMortarImpl(fbcs, bfinfo, side_areas, g, 
 		       extractPeriodic(fconditions), spatial_tolerance);
     storeFlowCond(fbcs, bfinfo, fconditions, side_areas);
   }
 
 
   template <class BCs, class GridInterface>
-  void createPeriodicImpl(BCs& fbcs,
+  void createPeriodicMortarImpl(BCs& fbcs,
 			  std::vector<BoundaryFaceInfo>& bfinfo,
 			  array<double, 6>& side_areas,
 			  const GridInterface& g,
@@ -38,7 +40,7 @@ namespace Dune
 			  double spatial_tolerance = 1e-6)
   {
     // Fake a variable s.t. we don't search for periodic partners in X/Y direction
-    array<bool, 2*GridInterface::Dimension>& is_periodic_fake = is_periodic;
+    array<bool, 2*GridInterface::Dimension> is_periodic_fake = is_periodic;
     for (int can_pos = 0; can_pos < 4; ++can_pos) {
       is_periodic_fake[can_pos] = false;
     }
