@@ -123,6 +123,10 @@ public:
 
   void periodicBCsMortar();
 
+  const Matrix getMortarMatrix(int dir) {
+    return L[dir];
+  }
+
   //void setupDofEqnMapper();
 
 private:
@@ -393,10 +397,10 @@ void MortarHelper<GridInterface>::printMortarMatrix(int dir)
 {
   ASSERT(dir == 0 && dir == 1);
  
-  if (dir == 0) std::cout << "Mortar matrix X direction:" << std::endl;
-  else          std::cout << "Mortar matrix Y direction:" << std::endl;
+  if (dir == 0) std::cout << "\nMortar matrix X direction:" << std::endl;
+  else          std::cout << "\nMortar matrix Y direction:" << std::endl;
 
-  std::cout << std::setprecision(3);
+  std::cout << std::setprecision(3) << std::fixed;
 
   Matrix MM(L[dir]);
   int n = MM.N();
@@ -716,5 +720,6 @@ MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::G
 
   return result;
 }
+
 
 #endif // MORTAR_HPP

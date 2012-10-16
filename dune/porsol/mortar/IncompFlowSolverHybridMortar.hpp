@@ -485,7 +485,7 @@ namespace Dune {
 	initSystemStructure(g, bc);
 	computeInnerProducts(r, grav);
       }
-      mortar_.init(*pgrid_);
+      mortar_.init(*pgrid_, total_num_faces_);
     }
 
 
