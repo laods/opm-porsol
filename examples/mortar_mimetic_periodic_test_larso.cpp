@@ -22,6 +22,8 @@
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
 //#include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/porsol/mortar/IncompFlowSolverHybridMortar.hpp>
+#include <dune/porsol/mortar/PeriodicHelpersMortar.hpp>
+
 
 #include <dune/porsol/mortar/mortar.hpp>
 #include <dune/porsol/mortar/shapefunctions.hh>
@@ -121,15 +123,30 @@ int main(int varnum, char** vararg)
 			     FlowBC(FlowBC::Periodic, 0.0) }};
 
   BCs fbc;
-  createPeriodic(fbc, g, cond);
+
+  cout << "\nCalls createPeriodicMortar() ...\n";
+  createPeriodicMortar(fbc, g, cond);
+  cout << "createPeriodicMortar finished!\n";
+
+  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+      if (f->boundary()) {
+	ASSERT(bc.flowCond(*f).isPeriodic());	
+      }
+    }
+  }
 
   FlowSolver solver;
   solver.init(g, rockParams, gravity, fbc);
+
+  cout << "1\n";
 
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);
 
   solver.solve(rockParams, sat, fbc, src);
+
+  cout << "2\n";
 
   double mod = solver.postProcessFluxes();
   cout << "Max mod: " << mod << endl;
