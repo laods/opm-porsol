@@ -195,6 +195,9 @@ int main(int varnum, char** vararg)
   //mortar.printFace(2);
   //mortar.printFace(6);
   mortar.periodicBCsMortar();
+  mortar.printMortarMatrix(0);
+  mortar.printMortarMatrix(1);
+
 
   return 0;
 }

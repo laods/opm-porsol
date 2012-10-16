@@ -119,6 +119,8 @@ public:
   // Print vertices on face quads with global index and coord
   void printFace(int face);
 
+  void printMortarMatrix(int dir);
+
   void periodicBCsMortar();
 
   //void setupDofEqnMapper();
@@ -385,6 +387,31 @@ void MortarHelper<GridInterface>::printFace(int face) {
   }
   std::cout << bg << std::endl;
 }
+
+template<class GridInterface>
+void MortarHelper<GridInterface>::printMortarMatrix(int dir) 
+{
+  ASSERT(dir == 0 && dir == 1);
+ 
+  if (dir == 0) std::cout << "Mortar matrix X direction:" << std::endl;
+  else          std::cout << "Mortar matrix Y direction:" << std::endl;
+
+  std::cout << std::setprecision(3);
+
+  Matrix MM(L[dir]);
+  int n = MM.N();
+  int m = MM.M();
+  ASSERT(n == nEqns);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (MM.exists(i,j)) std::cout << MM[i][j];
+      else std::cout << 0.0;
+      std::cout << " ";
+    }
+    std::cout << std::endl;
+  }
+}
+
 
 template<class GridInterface>
 void MortarHelper<GridInterface>::periodicBCsMortar() {
