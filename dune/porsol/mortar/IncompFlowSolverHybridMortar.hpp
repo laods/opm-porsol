@@ -541,8 +541,11 @@ namespace Dune {
 	       "You must call clear() prior to initSystemStructure()");
       ASSERT  (topologyIsSane(g));
 
+      std::cout << "enumerateDof() ...\n";
       enumerateDof(g, bc);
+      std::cout << "allocateConnections() ...\n";
       allocateConnections(bc);
+      std::cout << "setConnections() ...\n";
       setConnections(bc);
     }
 
@@ -1065,14 +1068,20 @@ namespace Dune {
 	ppartner_dof_.assign(total_num_faces_, -1);
 	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
 	  for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-	    if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+	    int bid = f->boundaryId();
+	    int cbid = bc.getCanonicalBoundaryId(bid);
+	    bool zdir = false;
+	    if (cbid == 5 || cbid == 6) zdir = true;
+
+	    // Only define ppartner if in Z direction (zdir)
+	    if (f->boundary() && bc.flowCond(*f).isPeriodic() && zdir) {
 	      const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
 	      BdryIdMapIterator j =
-		bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+		bdry_id_map_.find(bc.getPeriodicPartner(bid)); 
 	      ASSERT (j != bdry_id_map_.end());
 	      const int dof2 = cf[j->second.first][j->second.second];
-
+	      
 	      ppartner_dof_[dof1] = dof2;
 	      ppartner_dof_[dof2] = dof1;
 	    }
