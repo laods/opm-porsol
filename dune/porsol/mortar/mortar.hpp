@@ -48,6 +48,7 @@ public:
     find_n();
     tol_ = 1e-8;
     nEqns_ = 0;
+    dco_ = true;
   };
 
   MortarHelper(const GridInterface& grid, int nEqns)
@@ -57,11 +58,13 @@ public:
     find_n();
     tol_ = 1e-8;
     nEqns_ = nEqns;
+    dco_ = true;
   };
 
   MortarHelper(const GridInterface& grid, std::vector<ctype> min,
-	       std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8)
-    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), nEqns_(nEqns), tol_(tol) {};
+	       std::vector<ctype> max, int n1, int n2_, int nEqns, 
+	       double tol = 1e-8, bool dco = true)
+    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), nEqns_(nEqns), tol_(tol), dco_(dco) {};
 
   void init(const GridInterface& grid) 
   {
@@ -70,6 +73,7 @@ public:
     find_n();
     tol_ = 1e-8;
     nEqns_ = 0;
+    dco_ = true;
   }
 
   void init(const GridInterface& grid, int nEqns) 
@@ -79,16 +83,18 @@ public:
     find_n();
     tol_ = 1e-8;
     nEqns_ = nEqns;
+    dco_ = true;
   }
   
   void init(const GridInterface& grid, std::vector<ctype> min,
-	    std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8)
+	    std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8, bool dco = true)
   {
     pgrid_ = &grid;
     min_ = min;  max_ = max;
     n1_  = n1;   n2 = n2_;
     tol_ = tol;
     nEqns_ = nEqns;
+    dco_ = dco;
   }
 
   void clear()
@@ -124,6 +130,7 @@ private:
   int n2_;
   const GridInterface* pgrid_;
   int nEqns_;
+  bool dco_; // Dune convention ordering of vertices in quad
   
   enum SIDE {
     LEFT,
@@ -382,37 +389,43 @@ void MortarHelper<GridInterface>::printFace(int face) {
 template<class GridInterface>
 void MortarHelper<GridInterface>::periodicBCsMortar() {
 
+  std::cout << "\nBuilding Mortar matrices...\n";
+
   // Based on ElasticityUpscale::periodicBCsMortar()
   // But not MPC part (that is only step 3-6)
 
   // Step 3: extracts and establishes a quad grid 
   //         for the left/right/front/back sides
-  master.push_back(extractMasterFace(X, min_[0], LEFT, true));
-  master.push_back(extractMasterFace(X, max_[0], RIGHT, true));
-  master.push_back(extractMasterFace(Y, min_[1], LEFT, true));
-  master.push_back(extractMasterFace(Y, max_[1], RIGHT, true));
+  master.push_back(extractMasterFace(X, min_[0], LEFT, dco_));
+  master.push_back(extractMasterFace(X, max_[0], RIGHT, dco_));
+  master.push_back(extractMasterFace(Y, min_[1], LEFT, dco_));
+  master.push_back(extractMasterFace(Y, max_[1], RIGHT, dco_));
 
   // Step 4: Establishes grids for the dual dofs
   BoundaryGrid::FaceCoord fmin, fmax;
   fmin[0] = min_[1]; fmin[1] = min_[2];
   fmax[0] = max_[1]; fmax[1] = max_[2];
-  BoundaryGrid lambdax = BoundaryGrid::uniform(fmin, fmax, n2_, 1, true);
+  BoundaryGrid lambdax = BoundaryGrid::uniform(fmin, fmax, n2_, 1, dco_);
   
-  std::cout << lambdax << std::endl;
-
   fmin[0] = min_[0]; fmin[1] = min_[2];
   fmax[0] = max_[0]; fmax[1] = max_[2];
-  BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, true);
+  BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, dco_);
 
   // Step 5: Calculates the coupling matrix L1 between left/right sides
+  std::cout << "  Calling findLMartixMortar for left side (X)\n";
   Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0);
+  std::cout << "  Calling findLMartixMortar for right side (X)\n";
   Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0);
   L.push_back(MatrixOps::Axpy(L1_left, L1_right, -1));
 
-  // Step 6: Calculates the coupling matrix L1 between front/back sides
+  // Step 6: Calculates the coupling matrix L2 between front/back sides
+  std::cout << "  Calling findLMartixMortar for front side (X)\n";
   Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1);
+  std::cout << "  Calling findLMartixMortar for back side (X)\n";
   Matrix L2_right = findLMatrixMortar(master[3], lambday, 1);
   L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
+  
+  std::cout << "Mortar matrices finished!\n\n";
 }
 
 
@@ -438,7 +451,9 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	
 	// Own code:
 	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+	//std::cout << "    @ pillar #" << p << ", quad #" << q << ": \n";
 	int dof = getEquationForDof(qu, dir);
+	//std::cout << "      dof = " << dof << std::endl;
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i); 
 	  // No need for multiplying with 3 (only one DOF per vertex)
@@ -555,6 +570,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 template<class GridInterface>
 int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& quad, int dir)
 {
+ 
   GridType gv = pgrid_->grid();
   LeafFaceIterator itFaceStart = gv.leafView().template begin<dim-1>();
   LeafFaceIterator itFaceEnd   = gv.leafView().template end<dim-1>();
@@ -568,19 +584,30 @@ int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& qua
   std::vector<GlobalCoordinate> vertices;
   vertices.push_back(gv.vertexPosition(vertexIdx[0]));
   vertices.push_back(gv.vertexPosition(vertexIdx[1]));
-  vertices.push_back(gv.vertexPosition(vertexIdx[2]));
-  vertices.push_back(gv.vertexPosition(vertexIdx[3]));
+  if (dco_) {
+    vertices.push_back(gv.vertexPosition(vertexIdx[3]));
+    vertices.push_back(gv.vertexPosition(vertexIdx[2]));
+  }
+  else {
+    vertices.push_back(gv.vertexPosition(vertexIdx[2]));
+    vertices.push_back(gv.vertexPosition(vertexIdx[3]));
+  }
 
   GlobalCoordinate faceCentroid = centroid(vertices,dir);
+  //std::cout << "      Centroid quad: " << faceCentroid << std::endl;
 
   typedef typename GridInterface::CellIterator CI;
   typedef typename CI::FaceIterator FI;
   
   for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+      //std::cout << "        Testing face #" << f->index()
+      //	<< ", centroid: " << f->centroid() << " ...";
       if ( (f->boundary()) &&  (isOnPoint(f->centroid(), faceCentroid)) ) {
+	//std::cout << " Accepted!\n";
 	return f->index();
       }
+      //std::cout << std::endl;
     }
   }
 
@@ -590,11 +617,17 @@ int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& qua
 
 template<class GridInterface>
 typename MortarHelper<GridInterface>::GlobalCoordinate 
-MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::GlobalCoordinate> vertices, int dir)
+MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::GlobalCoordinate> 
+				      vertices, int dir)
 {
   // Calculates 3D centroid of a quad defined by vertices. 
   // Assumes that all vertices lie in the same plane (XY, XZ or YZ)
-  
+
+  //std::cout << "      Vertices: " << vertices[0] << std::endl;
+  //std::cout << "                " << vertices[1] << std::endl;
+  //std::cout << "                " << vertices[2] << std::endl;
+  //std::cout << "                " << vertices[3] << std::endl;
+
   int coord1, coord2;
   GlobalCoordinate result(0.0);
   switch (dir) {
@@ -614,7 +647,7 @@ MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::G
     result[2] = vertices[0][2];
     break;
   default:
-    std::cerr << "dir must be either 0(x), 1(y) og 2(z)" << std::endl;
+    std::cerr << "dir must be either 0(x), 1(y) or 2(z)" << std::endl;
     break;
   }
 
@@ -656,6 +689,5 @@ MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::G
 
   return result;
 }
-
 
 #endif // MORTAR_HPP

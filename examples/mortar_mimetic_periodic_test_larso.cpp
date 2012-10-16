@@ -59,8 +59,8 @@ int main(int varnum, char** vararg)
     exit(1);
   }
   else if (varnum == 1) {
-    array<int,3> dims = {10, 10, 5};
-    array<double,3> cellsize = {0.05, 0.05, 0.02};
+    array<int,3> dims = {3, 3, 3};
+    array<double,3> cellsize = {1, 1, 1};
     grid.createCartesian(dims, cellsize);
     double uniformPORO = 0.2;
     double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
@@ -135,6 +135,7 @@ int main(int varnum, char** vararg)
   cout << "Max mod: " << mod << endl;
 
   solver.printStats(std::cout);
+  solver.printSystem("uniform_27cells");
 
   // Play with shape functions
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
@@ -185,7 +186,7 @@ int main(int varnum, char** vararg)
     writer.write(vtufile);
   }
 
-  MortarHelper<GI> mortar(g);
+  MortarHelper<GI> mortar(g, 108);
   cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
@@ -193,7 +194,7 @@ int main(int varnum, char** vararg)
   //mortar.printFace(1);
   //mortar.printFace(2);
   //mortar.printFace(6);
-  mortar.periodicBCsMortar(1060);
+  mortar.periodicBCsMortar();
 
   return 0;
 }
