@@ -47,11 +47,21 @@ public:
     findMinMax();
     find_n();
     tol_ = 1e-8;
+    nEqns_ = 0;
+  };
+
+  MortarHelper(const GridInterface& grid, int nEqns)
+    : pgrid_(&grid) 
+  {
+    findMinMax();
+    find_n();
+    tol_ = 1e-8;
+    nEqns_ = nEqns;
   };
 
   MortarHelper(const GridInterface& grid, std::vector<ctype> min,
-	       std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
-    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), tol_(tol) {};
+	       std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8)
+    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), nEqns_(nEqns), tol_(tol) {};
 
   void init(const GridInterface& grid) 
   {
@@ -59,15 +69,26 @@ public:
     findMinMax();
     find_n();
     tol_ = 1e-8;
+    nEqns_ = 0;
+  }
+
+  void init(const GridInterface& grid, int nEqns) 
+  {
+    pgrid_ = &grid;
+    findMinMax();
+    find_n();
+    tol_ = 1e-8;
+    nEqns_ = nEqns;
   }
   
   void init(const GridInterface& grid, std::vector<ctype> min,
-	    std::vector<ctype> max, int n1, int n2_, double tol = 1e-8)
+	    std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8)
   {
     pgrid_ = &grid;
     min_ = min;  max_ = max;
     n1_  = n1;   n2 = n2_;
     tol_ = tol;
+    nEqns_ = nEqns;
   }
 
   void clear()
@@ -75,6 +96,7 @@ public:
     n1_ = n2_ = 0;
     min_ = max_ = std::vector<double>(3,0.0);
     pgrid_ = 0;
+    nEqns_ = 0;
   }
 
   std::vector<double> min();
@@ -91,7 +113,7 @@ public:
   // Print vertices on face quads with global index and coord
   void printFace(int face);
 
-  void periodicBCsMortar(int nEqns);
+  void periodicBCsMortar();
 
   //void setupDofEqnMapper();
 
@@ -101,6 +123,7 @@ private:
   int n1_;
   int n2_;
   const GridInterface* pgrid_;
+  int nEqns_;
   
   enum SIDE {
     LEFT,
@@ -120,8 +143,7 @@ private:
   bool isOnLine(Direction dir, GlobalCoordinate coord, ctype x, ctype y);
   bool isOnPoint(GlobalCoordinate coord, GlobalCoordinate point);
 
-  Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir,
-			   int nEqns);
+  Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
 
   int getEquationForDof(const BoundaryGrid::Quad& quad, int dir);
 
@@ -358,7 +380,7 @@ void MortarHelper<GridInterface>::printFace(int face) {
 }
 
 template<class GridInterface>
-void MortarHelper<GridInterface>::periodicBCsMortar(int nEqns) {
+void MortarHelper<GridInterface>::periodicBCsMortar() {
 
   // Based on ElasticityUpscale::periodicBCsMortar()
   // But not MPC part (that is only step 3-6)
@@ -383,13 +405,13 @@ void MortarHelper<GridInterface>::periodicBCsMortar(int nEqns) {
   BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, true);
 
   // Step 5: Calculates the coupling matrix L1 between left/right sides
-  Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0, nEqns);
-  Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0, nEqns);
+  Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0);
+  Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0);
   L.push_back(MatrixOps::Axpy(L1_left, L1_right, -1));
 
   // Step 6: Calculates the coupling matrix L1 between front/back sides
-  Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1, nEqns);
-  Matrix L2_right = findLMatrixMortar(master[3], lambday, 1, nEqns);
+  Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1);
+  Matrix L2_right = findLMatrixMortar(master[3], lambday, 1);
   L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
 }
 
@@ -397,13 +419,11 @@ void MortarHelper<GridInterface>::periodicBCsMortar(int nEqns) {
 template<class GridInterface>
 Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 						 const BoundaryGrid& interface,
-						 int dir,
-						 int nEqns)
+						 int dir)
 {
-  // TODO: - test if nEqns can be found from pgrid_->numberOfFaces() 
 
   std::vector< std::set<int> > adj;
-  adj.resize(nEqns);
+  adj.resize(nEqns_);
 
   // process pillar by pillar
   size_t per_pillar = b1.size()/interface.size();
@@ -448,7 +468,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
   }
 
   Matrix B;
-  MatrixOps::fromAdjacency(B,adj,nEqns,interface.totalNodes());
+  MatrixOps::fromAdjacency(B,adj,nEqns_,interface.totalNodes());
 
   // get a set of P0 shape functions for the face pressures
   P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
