@@ -541,11 +541,8 @@ namespace Dune {
 	       "You must call clear() prior to initSystemStructure()");
       ASSERT  (topologyIsSane(g));
 
-      std::cout << "enumerateDof() ...\n";
       enumerateDof(g, bc);
-      std::cout << "allocateConnections() ...\n";
       allocateConnections(bc);
-      std::cout << "setConnections() ...\n";
       setConnections(bc);
     }
 
@@ -1166,13 +1163,18 @@ namespace Dune {
 	// connections.
 	for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	  for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-	    if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+	    int bid = f->boundaryId();
+	    int cbid = bc.getCanonicalBoundaryId(bid);
+	    bool zdir = false;
+	    if (cbid == 5 || cbid == 6) zdir = true;
+
+	    if (f->boundary() && bc.flowCond(*f).isPeriodic() && zdir) {
 	      // dof-id of self
 	      const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
 	      // dof-id of other
 	      BdryIdMapIterator j =
-		bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+		bdry_id_map_.find(bc.getPeriodicPartner(bid));
 	      ASSERT (j != bdry_id_map_.end());
 	      const int c2   = j->second.first;
 	      const int dof2 = cf[c2][j->second.second];
@@ -1266,13 +1268,18 @@ namespace Dune {
 	// connections.
 	for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	  for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-	    if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+	    int bid = f->boundaryId();
+	    int cbid = bc.getCanonicalBoundaryId(bid);
+	    bool zdir = false;
+	    if (cbid == 5 || cbid == 6) zdir = true;
+
+	    if (f->boundary() && bc.flowCond(*f).isPeriodic() && zdir) {
 	      // dof-id of self
 	      const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
 	      // dof-id of other
 	      BdryIdMapIterator j =
-		bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+		bdry_id_map_.find(bc.getPeriodicPartner(bid));
 	      ASSERT (j != bdry_id_map_.end());
 	      const int c2   = j->second.first;
 	      const int dof2 = cf[c2][j->second.second];
