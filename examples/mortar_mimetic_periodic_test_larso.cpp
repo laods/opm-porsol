@@ -20,7 +20,7 @@
 #include <dune/porsol/common/ReservoirPropertyCapillary.hpp>
 
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
-//#include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/porsol/mortar/IncompFlowSolverHybridMortar.hpp>
 #include <dune/porsol/mortar/PeriodicHelpersMortar.hpp>
 
@@ -41,7 +41,10 @@ int main(int varnum, char** vararg)
   typedef CI  ::FaceIterator                                     FI;
   typedef Dune::BasicBoundaryConditions<true, false>             BCs;
   typedef Dune::ReservoirPropertyCapillary<3>                    RI;
-  typedef Dune::IncompFlowSolverHybridMortar<GI, RI, BCs, Dune::MimeticIPEvaluator> FlowSolver;
+  typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs, Dune::MimeticIPEvaluator> 
+    FlowSolverOrig;
+  typedef Dune::IncompFlowSolverHybridMortar<GI, RI, BCs, Dune::MimeticIPEvaluator> 
+    FlowSolverMortar;
 
   typedef double ctype; // To be used in shapefunctions
 
@@ -56,6 +59,7 @@ int main(int varnum, char** vararg)
   CpGrid grid;
   ReservoirPropertyCapillary<dim> rockParams;
 
+  // Check input. If no input given, create cartesian grid and uniform rock parameters
   if (varnum > 2) { //Wrong nr of input param
     cerr << "Wrong nr of input parameters. Only eclipse grid file name is allowed. If no grid file provided, a uniform cartesian grid is constructed." << endl;
     exit(1);
@@ -82,14 +86,17 @@ int main(int varnum, char** vararg)
     cout << "Parsing Eclipse file: " << ECLIPSEFILENAME << "..." << endl;
     Opm::EclipseGridParser eclParser(ECLIPSEFILENAME, true);
 
-    if (! (eclParser.hasField("SPECGRID") && eclParser.hasField("COORD") && eclParser.hasField("ZCORN"))) {  
-      cerr << "Error: Did not find SPECGRID, COORD and ZCORN in Eclipse file " << ECLIPSEFILENAME << endl;  
+    if (! (eclParser.hasField("SPECGRID") 
+	   && eclParser.hasField("COORD") 
+	   && eclParser.hasField("ZCORN"))) {  
+      cerr << "Error: Did not find SPECGRID, COORD and ZCORN in Eclipse file " 
+	   << ECLIPSEFILENAME << endl;  
       exit(1);  
-  }
+    }
     if (! (eclParser.hasField("PERMX") && eclParser.hasField("PORO"))) {  
       cerr << "Error: Did not find PERMX and PORO in Eclipse file " << ECLIPSEFILENAME << endl;  
       exit(1);  
-  }
+    }
 
     grid.readEclipseFormat(ECLIPSEFILENAME, ztol, false);
     rockParams.init(eclParser, grid.globalCell());
@@ -97,20 +104,13 @@ int main(int varnum, char** vararg)
     
   int numCells = grid.size(0);
 
-  if (numCells < 10) {
-    cout << "PORO and PERMX:" << endl;
-    for (int c = 0; c < numCells; ++c) {
-      cout << "Cell " << c << ":\n" << rockParams.porosity(c) << "\n" << rockParams.permeability(c) << endl;
-    }
-  }
-
-
   CI::Vector gravity;
   gravity[0] = gravity[1] = gravity[2] = 0.0;
   
   grid.setUniqueBoundaryIds(true);
   GridInterfaceEuler<CpGrid> g(grid);
   
+  // Set up Boundary Conditions
   array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
@@ -122,99 +122,69 @@ int main(int varnum, char** vararg)
 			     FlowBC(FlowBC::Periodic, 0.0),
 			     FlowBC(FlowBC::Periodic, 0.0) }};
 
-  BCs fbc;
+  BCs fbc_orig;
+  BCs fbc_mortar;
 
-  cout << "\nCalls createPeriodicMortar() ...\n";
-  createPeriodicMortar(fbc, g, cond);
-  cout << "createPeriodicMortar finished!\n";
+  createPeriodic(fbc_orig, g, cond);
+  createPeriodicMortar(fbc_mortar, g, cond);
 
-  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-      if (f->boundary()) {
-	ASSERT(fbc.flowCond(*f).isPeriodic());	
-      }
-    }
-  }
-
-  FlowSolver solver;
-  solver.init(g, rockParams, gravity, fbc);
-
-  cout << "1\n";
+  // Init flow solvers
+  FlowSolverOrig   solver_orig;
+  FlowSolverMortar solver_mortar;
+  solver_orig.init(g, rockParams, gravity, fbc_orig);
+  solver_mortar.init(g, rockParams, gravity, fbc_mortar);
 
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);
 
-  solver.solve(rockParams, sat, fbc, src);
+  // Call solvers
+  solver_orig.solve(rockParams, sat, fbc_orig, src);
+  solver_mortar.solve(rockParams, sat, fbc_mortar, src);
 
-  cout << "2\n";
+  // Print stats and system matrices
+  solver_orig.printStats(std::cout);
+  solver_orig.printSystem("orig");
 
-  double mod = solver.postProcessFluxes();
-  cout << "Max mod: " << mod << endl;
+  solver_mortar.printStats(std::cout);
+  solver_mortar.printSystem("mortar");
 
-  solver.printStats(std::cout);
-  solver.printSystem("uniform_27cells");
-
-  // Play with shape functions
-  P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
-  P0ShapeFunctionSet<ctype,ctype,2> ubasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
-
-  Dune::FieldVector<ctype,2> pkt(0.5);
-  cout << "Size ubasis: " << ubasis.size() << endl;
-  cout << "ubasis = " << ubasis[0].evaluateFunction(pkt) << endl;
-  cout << "ugrad  = " << ubasis[0].evaluateGradient(pkt) << endl;
-  cout << "Size lbasis: " << lbasis.size() << endl;
-  cout << "lbasis = " << lbasis[0].evaluateFunction(pkt) << endl;
-  cout << "lgrad  = " << lbasis[0].evaluateGradient(pkt) << endl;
-
-  // solver.init(...) // Må gjøre noe med template BCs til FlowSolver!
-  // Lage ny BCs class ?
-  // Lage ny IncompFlowSolverHybrid class ?
-
-  FlowSolver::SolutionType soln = solver.getSolution();
-
-  // Print solution
-  if (printSoln) {
-    cout << "Cell Pressure:\n" << scientific << setprecision(15);
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-      cout << '\t' << soln.pressure(c) << '\n';
-    }
-    
-    cout << "Cell (Out) Fluxes:\n";
-    cout << "flux = [\n";
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-      for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-	cout << soln.outflux(f) << ' ';
-      }
-      cout << "\b\n";
-    }
-    cout << "]\n";
-  } 
-   
-  vector<GI::Scalar> cellPressure;
-  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    cellPressure.push_back(soln.pressure(c)/(1.0*Opm::unit::barsa));
-  }
+  FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
+  FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
   
+  // Print solutions
+  if (printSoln && numCells < 100) {
+    cout << "\nCell pressure orig and mortar:\n" << scientific << setprecision(3);
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+      cout << c->index() 
+	   << '\t' << soln_orig.pressure(c)
+	   << "\t" << soln_mortar.pressure(c) << '\n';
+    }
+  }
+
+  // Print Mortar Matrix
+  if (printSoln && numCells < 30) {
+    solver_mortar.mortar_.printMortarMatrix(0);
+    solver_mortar.mortar_.printMortarMatrix(1);
+  }
+
+  vector<GI::Scalar> cellPressureOrig;
+  vector<GI::Scalar> cellPressureMortar;
+  for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+    cellPressureOrig.push_back(soln_orig.pressure(c)/(1.0*Opm::unit::barsa));
+    cellPressureMortar.push_back(soln_mortar.pressure(c)/(1.0*Opm::unit::barsa));
+  }
+
   // VTK writer
   if (vtk) {
-    string vtufile = "mortar_output";
-    VTKWriter<CpGrid::LeafGridView> writer(grid.leafView());
-    writer.addCellData(cellPressure, "cellPressure");
-    writer.write(vtufile);
+    string vtufile_orig   = "orig_output";
+    string vtufile_mortar = "mortar_output";
+    VTKWriter<CpGrid::LeafGridView> writer_orig(grid.leafView());
+    VTKWriter<CpGrid::LeafGridView> writer_mortar(grid.leafView());
+    writer_orig.addCellData(cellPressureOrig, "cellPressure");
+    writer_mortar.addCellData(cellPressureMortar, "cellPressure");
+    writer_orig.write(vtufile_orig);
+    writer_mortar.write(vtufile_mortar);
   }
-
-  MortarHelper<GI> mortar;
-  mortar.init(g,108);
-  cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
-  cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
-  cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;
-
-  //mortar.printFace(1);
-  //mortar.printFace(2);
-  //mortar.printFace(6);
-  mortar.periodicBCsMortar();
-  mortar.printMortarMatrix(0);
-  mortar.printMortarMatrix(1);
 
 
   return 0;
