@@ -334,6 +334,14 @@ BoundaryGrid MortarHelper<GridInterface>::extractMasterFace(Direction dir,
         q.v[2] = maxXmaxY(verts);
         q.v[3] = minXmaxY(verts);
       }
+
+      // Find global index of quad(face) if mapping is present
+      if (!cellFaces_.empty()) {
+	if (side == LEFT) 
+	  q.globalFaceIndex = cellFaces_[cell->index()][2*i];
+	else
+	  q.globalFaceIndex = cellFaces_[cell->index()][2*i+1];
+      }
       result.add(q);
     }
   }
