@@ -175,6 +175,7 @@ private:
 
   Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
 
+  int getEquationForDof(const BoundaryGrid::Quad& quad);
   int getEquationForDof(const BoundaryGrid::Quad& quad, int dir);
 
   GlobalCoordinate centroid(std::vector<GlobalCoordinate> vertices, int dir);
@@ -508,7 +509,11 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	// Own code:
 	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
 	//std::cout << "    @ pillar #" << p << ", quad #" << q << ": \n";
-	int dof = getEquationForDof(qu, dir);
+	int dof;
+	if (cellFaces_.empty()) 
+	  dof = getEquationForDof(qu, dir);
+	else
+	  dof = getEquationForDof(qu);
 	//std::cout << "      dof = " << dof << std::endl;
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i); 
@@ -581,7 +586,11 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
       // Own code:
       for (int i=0;i<1;++i) {
 	// No need to check for MPC
-	int indexi = getEquationForDof(qu,dir);
+	int indexi;
+	if (cellFaces_.empty())
+	  indexi = getEquationForDof(qu,dir);
+	else
+	  indexi = getEquationForDof(qu);
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
 	    int indexj = qi.v[j].i;
@@ -624,8 +633,20 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 }
 
 template<class GridInterface>
+int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& quad) {
+  ASSERT(!cellFaces_.empty());
+  return quad.globalFaceIndex;
+}
+
+template<class GridInterface>
 int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& quad, int dir)
 {
+  if (!cellFaces_.empty()) {
+    std::cout << "Warning! Mapping from quad to global face index exists,\n"
+	      << "so you should call getEquationForDof(quad) instead.\n"
+	      << "Calling getEquationForDof(quad)...\n";
+    return getEquationForDof(quad);
+  }
  
   GridType gv = pgrid_->grid();
   LeafFaceIterator itFaceStart = gv.leafView().template begin<dim-1>();
