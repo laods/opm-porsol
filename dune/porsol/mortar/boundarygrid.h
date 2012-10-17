@@ -80,6 +80,8 @@ class BoundaryGrid {
         {
           v[0].i = v[1].i = v[2].i = v[3].i = 0;
           v[0].c = v[1].c = v[2].c = v[3].c = 0.f;
+	  // Set global index to -1 as default
+	  globalIndex = -1;
         }
         //! \brief Return the physical coordinates corresponding to the
         //!        given local coordinates
@@ -96,6 +98,8 @@ class BoundaryGrid {
         Vertex v[4];
         //! \brief Bounding box
         FaceCoord bb[2];
+	//! \brief Global index of face corresponding to the quad
+	int globalIndex;
       protected:
         //! \brief Print to a stream
         friend std::ostream& operator <<(std::ostream& os, const Quad& q)
