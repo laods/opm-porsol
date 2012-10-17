@@ -203,7 +203,8 @@ int main(int varnum, char** vararg)
     writer.write(vtufile);
   }
 
-  MortarHelper<GI> mortar(g, 108);
+  MortarHelper<GI> mortar;
+  mortar.init(g,108);
   cout << "min = " << mortar.min()[0] << " " << mortar.min()[1] << " " << mortar.min()[2] << endl;
   cout << "max = " << mortar.max()[0] << " " << mortar.max()[1] << " " << mortar.max()[2] << endl;
   cout << "n   = " << mortar.n1() << " " << mortar.n2() << endl;

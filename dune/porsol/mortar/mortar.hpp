@@ -51,20 +51,21 @@ public:
     dco_ = true;
   };
 
-  MortarHelper(const GridInterface& grid, int nEqns)
-    : pgrid_(&grid) 
+  MortarHelper(const GridInterface& grid, int nEqns, Opm::SparseTable<int> cellFaces)
+    : pgrid_(&grid), nEqns_(nEqns), cellFaces_(cellFaces)
   {
     findMinMax();
     find_n();
     tol_ = 1e-8;
-    nEqns_ = nEqns;
     dco_ = true;
   };
 
   MortarHelper(const GridInterface& grid, std::vector<ctype> min,
 	       std::vector<ctype> max, int n1, int n2_, int nEqns, 
+	       Opm::SparseTable<int> cellFaces,
 	       double tol = 1e-8, bool dco = true)
-    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), nEqns_(nEqns), tol_(tol), dco_(dco) {};
+    : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), 
+      nEqns_(nEqns), cellFaces_(cellFaces), tol_(tol), dco_(dco) {};
 
   void init(const GridInterface& grid) 
   {
@@ -85,15 +86,29 @@ public:
     nEqns_ = nEqns;
     dco_ = true;
   }
+
+  void init(const GridInterface& grid, int nEqns, Opm::SparseTable<int> cellFaces) 
+  {
+    pgrid_ = &grid;
+    findMinMax();
+    find_n();
+    tol_ = 1e-8;
+    nEqns_ = nEqns;
+    cellFaces_ = cellFaces;
+    dco_ = true;
+  }
   
   void init(const GridInterface& grid, std::vector<ctype> min,
-	    std::vector<ctype> max, int n1, int n2_, int nEqns, double tol = 1e-8, bool dco = true)
+	    std::vector<ctype> max, int n1, int n2_, int nEqns, 
+	    Opm::SparseTable<int> cellFaces,
+	    double tol = 1e-8, bool dco = true)
   {
     pgrid_ = &grid;
     min_ = min;  max_ = max;
     n1_  = n1;   n2 = n2_;
     tol_ = tol;
     nEqns_ = nEqns;
+    cellFaces_ = cellFaces;
     dco_ = dco;
   }
 
@@ -103,6 +118,7 @@ public:
     min_ = max_ = std::vector<double>(3,0.0);
     pgrid_ = 0;
     nEqns_ = 0;
+    cellFaces_.clear();
   }
 
   std::vector<double> min();
@@ -137,6 +153,7 @@ private:
   const GridInterface* pgrid_;
   int nEqns_;
   bool dco_; // Dune convention ordering of vertices in quad
+  Opm::SparseTable<int> cellFaces_;
   
   enum SIDE {
     LEFT,
