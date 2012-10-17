@@ -657,6 +657,7 @@ namespace Dune {
 	       int linsolver_type = 1,
 	       bool same_matrix = false)
     {
+      mortar_.periodicBCsMortar();
       assembleDynamic(r, sat, bc, src);
       //             static int count = 0;
       //             ++count;
@@ -868,6 +869,8 @@ namespace Dune {
     void printSystem(const std::string& prefix)
     {
       writeMatrixToMatlab(S_, prefix + "-mat.dat");
+      writeMatrixToMatlab(mortar_.getMortarMatrix(0), prefix + "-mortarL1.dat");
+      writeMatrixToMatlab(mortar_.getMortarMatrix(1), prefix + "-mortarL2.dat");
 
       std::string rhsfile(prefix + "-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
@@ -913,7 +916,13 @@ namespace Dune {
     // Physical quantities (derived)
     FlowSolution flowSolution_;
 
+  public:
+    
+    // Make this public for easy debugging
+    // TODO: Set this member private
     MortarHelper<GridInterface> mortar_;
+
+  private:
 
     // ----------------------------------------------------------------
     void enumerateDof(const GridInterface& g, const BCInterface& bc)
