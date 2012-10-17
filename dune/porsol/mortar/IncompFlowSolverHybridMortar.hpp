@@ -35,9 +35,6 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
-#error IncompFlowSolverHybrid.hpp is already included!
-#endif
 
 #ifndef OPENRS_INCOMPFLOWSOLVERHYBRIDMORTAR_HEADER
 #define OPENRS_INCOMPFLOWSOLVERHYBRIDMORTAR_HEADER
@@ -81,6 +78,9 @@
 #include <dune/porsol/mortar/mortar.hpp>
 
 namespace Dune {
+
+#ifndef OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
+
   namespace {
     /// @brief
     ///    Verify that each pair of connected cells in a grid are
@@ -185,6 +185,8 @@ namespace Dune {
       T a_, b_;
     };
   }
+
+#endif // OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
 
 
   /// @brief
