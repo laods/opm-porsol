@@ -395,7 +395,7 @@ void MortarHelper<GridInterface>::printFace(int face) {
 template<class GridInterface>
 void MortarHelper<GridInterface>::printMortarMatrix(int dir) 
 {
-  ASSERT(dir == 0 && dir == 1);
+  ASSERT(dir == 0 || dir == 1);
  
   if (dir == 0) std::cout << "\nMortar matrix X direction:" << std::endl;
   else          std::cout << "\nMortar matrix Y direction:" << std::endl;
@@ -405,7 +405,7 @@ void MortarHelper<GridInterface>::printMortarMatrix(int dir)
   Matrix MM(L[dir]);
   int n = MM.N();
   int m = MM.M();
-  ASSERT(n == nEqns);
+  ASSERT(n == nEqns_);
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < m; ++j) {
       if (MM.exists(i,j)) std::cout << MM[i][j];

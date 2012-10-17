@@ -50,7 +50,7 @@ int main(int varnum, char** vararg)
   // Parameters
   double ztol = 1e-8;
   const int dim = 3; 
-  bool printSoln = false;
+  bool printSoln = true;
   bool vtk = false;
   
   CpGrid grid;
@@ -131,7 +131,7 @@ int main(int varnum, char** vararg)
   for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
       if (f->boundary()) {
-	ASSERT(bc.flowCond(*f).isPeriodic());	
+	ASSERT(fbc.flowCond(*f).isPeriodic());	
       }
     }
   }
