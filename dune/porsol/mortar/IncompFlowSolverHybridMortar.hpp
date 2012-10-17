@@ -375,7 +375,7 @@ namespace Dune {
     ///   Tag for identifying which type of condition/equation to
     ///   assemble into the global system of linear equation for
     ///   any given face/connection.
-    enum FaceType { Internal, Dirichlet, Neumann, Periodic };
+    enum FaceType { Internal, Dirichlet, Neumann, Periodic, Mortar };
 
     /// @brief
     ///    Type representing the solution to a given flow problem.
@@ -1583,13 +1583,20 @@ namespace Dune {
 	    condval[k]         = bcond.pressure();
 	    do_regularization_ = false;
 	  } else if (bcond.isPeriodic()) {
-	    BdryIdMapIterator j =
-	      bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
-	    ASSERT (j != bdry_id_map_.end());
+	    int bid  = f->boundaryId();
+	    int cbid = bc.getCanonicalBoundaryId(bid);
 
-	    facetype[k] = Periodic;
+	    if (cbid == 5 || cbid == 6) {
+	      BdryIdMapIterator j =
+		bdry_id_map_.find(bc.getPeriodicPartner(bid));
+	      ASSERT (j != bdry_id_map_.end());
+	      facetype[k] = Periodic;
+	      ppartner[k] = cf[j->second.first][j->second.second];
+	    } else {
+	      facetype[k] = Mortar;
+	    }
 	    condval[k]  = bcond.pressureDifference();
-	    ppartner[k] = cf[j->second.first][j->second.second];
+	    
 	  } else {
 	    ASSERT (bcond.isNeumann());
 	    facetype[k] = Neumann;
