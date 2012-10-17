@@ -422,6 +422,7 @@ template<class GridInterface>
 void MortarHelper<GridInterface>::printMortarMatrix(int dir) 
 {
   ASSERT(dir == 0 || dir == 1);
+  ASSERT(!L.empty());
  
   if (dir == 0) std::cout << "\nMortar matrix X direction:" << std::endl;
   else          std::cout << "\nMortar matrix Y direction:" << std::endl;
