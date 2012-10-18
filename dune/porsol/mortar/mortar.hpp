@@ -119,6 +119,11 @@ public:
     pgrid_ = 0;
     nEqns_ = 0;
     cellFaces_.clear();
+    dco_ = true;
+    master.clear();
+    slave.clear();
+    L.clear();
+    rhs.clear();
   }
 
   std::vector<double> min();
