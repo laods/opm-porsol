@@ -143,6 +143,10 @@ public:
     return L[dir];
   }
 
+  const Vector getRhs(int dir) {
+    return rhs[dir];
+  }
+
   //void setupDofEqnMapper();
 
 private:
@@ -166,6 +170,7 @@ private:
   std::vector<BoundaryGrid> master;
   std::vector< std::vector<BoundaryGrid::Vertex> > slave;
   std::vector<Matrix> L;
+  std::vector<Vector> rhs;
 
   std::vector<BoundaryGrid::Vertex> extractFace(Direction dir, ctype coord);
   BoundaryGrid extractMasterFace(Direction dir, ctype coord, SIDE side=LEFT, bool dc=false);
