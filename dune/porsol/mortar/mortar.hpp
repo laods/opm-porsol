@@ -556,7 +556,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
     Dune::GenericReferenceElements<ctype,2>::general(gt);
   // get a quadrature rule
   const Dune::QuadratureRule<ctype,2>& rule = 
-    Dune::QuadratureRules<ctype,2>::rule(gt,2);
+    Dune::QuadratureRules<ctype,2>::rule(gt,1);
   
   // do the assembly loop
   typename Dune::QuadratureRule<ctype,2>::const_iterator r;
