@@ -494,11 +494,18 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
   std::vector< std::set<int> > adj;
   adj.resize(nEqns_);
 
+  // Debugging
+  std::cout << "Print boundary grid in storage order:\n";
+  for (int i=0; i<b1.size(); ++i) {
+    std::cout << i << " gfi = " << b1[i].globalFaceIndex 
+	      << ", first corner = " << b1[i].v[0].c << std::endl;
+  }
+
   // process pillar by pillar
   size_t per_pillar = b1.size()/interface.size();
   for (size_t p=0;p<interface.size();++p) {
     for (size_t q=0;q<per_pillar;++q) {
-      for (size_t i=0;i<1;++i) { // ?? i<4 or i<1 ??
+      for (size_t i=0;i<1;++i) {
         //for (size_t d=0;d<3;++d) { // We only have one DOF per vertex
 	//MPC* mpc = A.getMPC(b1[p*per_pillar+q].v[i].i,d);
 
@@ -506,7 +513,8 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	// Check for MPC not nescessary (as it is in elasticity upscale)
 	
 	// Own code:
-	const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+	//const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+	const BoundaryGrid::Quad& qu(b1[p+per_pillar*q]);
 	//std::cout << "    @ pillar #" << p << ", quad #" << q << ": \n";
 	int dof;
 	if (cellFaces_.empty()) 
@@ -564,7 +572,8 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
     const BoundaryGrid::Quad& qi(interface[p]);
     HexGeometry<2,2,GridInterface> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
-      const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+      //const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
+      const BoundaryGrid::Quad& qu(b1[p+per_pillar*q]);
       HexGeometry<2,2,GridType> hex(qu,pgrid_->grid(),dir);
       Dune::FieldMatrix<ctype,1,4> E; // One row
       E = 0;
@@ -593,6 +602,20 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
 	    int indexj = qi.v[j].i;
+	    std::cout << "p=" << p << ", q=" << q 
+		      << ", j=" << j << ", indexj=" << indexj 
+		      << ", gfi=" << qu.globalFaceIndex
+		      << " (Vertices mortar quad: ";
+	    for (int k=0;k<4;++k) {
+	      std::cout << "[" << qi.v[k].c << "] ";
+	    }
+	    std::cout << ")" << std::endl;
+	    std::cout << "  (Vertices small quad: ";
+	    for (int k=0;k<4;++k) {
+	      std::cout << "[" << qu.v[k].c << "] ";
+	    }
+	    std::cout << ")" << std::endl;
+
 	    B[indexi][indexj] += E[i][j];
 	  }
 	}
