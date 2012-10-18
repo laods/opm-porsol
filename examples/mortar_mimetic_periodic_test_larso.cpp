@@ -65,7 +65,7 @@ int main(int varnum, char** vararg)
     exit(1);
   }
   else if (varnum == 1) {
-    array<int,3> dims = {3, 3, 3};
+    array<int,3> dims = {2, 2, 2};
     array<double,3> cellsize = {1, 1, 1};
     grid.createCartesian(dims, cellsize);
     double uniformPORO = 0.2;
@@ -109,6 +109,17 @@ int main(int varnum, char** vararg)
   
   grid.setUniqueBoundaryIds(true);
   GridInterfaceEuler<CpGrid> g(grid);
+
+  // Print gridinfo
+  cout << "Grid info:\n";
+  for (CI cell = g.cellbegin(); cell != g.cellend(); ++cell) {
+    cout << cell->index() << "\t" << cell->centroid() << endl;
+    int can_pos = 0;
+    for (FI face = cell.facebegin(); face != cell.faceend(); ++face, ++can_pos) {
+      cout << "  " << can_pos << "\t" << g.faceIndex(cell->index(), can_pos) << endl;
+      cout << "    " << face->centroid() << endl;
+    }
+  }
   
   // Set up Boundary Conditions
   array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
@@ -134,12 +145,16 @@ int main(int varnum, char** vararg)
   solver_orig.init(g, rockParams, gravity, fbc_orig);
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);
 
-  vector<double> src(numCells, 0.0);
-  vector<double> sat(numCells, 0.0);
-
-  // Call solvers
-  solver_orig.solve(rockParams, sat, fbc_orig, src);
-  solver_mortar.solve(rockParams, sat, fbc_mortar, src);
+  // Print Mortar Matrix
+  if (printSoln && numCells < 30) {
+    solver_mortar.mortar_.printMortarMatrix(0);
+    solver_mortar.mortar_.printMortarMatrix(1);
+  }
+  
+  solver_mortar.mortar_.printFace(1);
+  solver_mortar.mortar_.printFace(2);
+  solver_mortar.mortar_.printFace(3);
+  solver_mortar.mortar_.printFace(4);
 
   // Print stats and system matrices
   solver_orig.printStats(std::cout);
@@ -147,6 +162,13 @@ int main(int varnum, char** vararg)
 
   solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
+
+  vector<double> src(numCells, 0.0);
+  vector<double> sat(numCells, 0.0);
+
+  // Call solvers
+  solver_orig.solve(rockParams, sat, fbc_orig, src);
+  solver_mortar.solve(rockParams, sat, fbc_mortar, src);
 
   FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
@@ -159,12 +181,6 @@ int main(int varnum, char** vararg)
 	   << '\t' << soln_orig.pressure(c)
 	   << "\t" << soln_mortar.pressure(c) << '\n';
     }
-  }
-
-  // Print Mortar Matrix
-  if (printSoln && numCells < 30) {
-    solver_mortar.mortar_.printMortarMatrix(0);
-    solver_mortar.mortar_.printMortarMatrix(1);
   }
 
   vector<GI::Scalar> cellPressureOrig;
