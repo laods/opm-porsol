@@ -118,6 +118,7 @@ public:
     min_ = max_ = std::vector<double>(3,0.0);
     pgrid_ = 0;
     nEqns_ = 0;
+    tol_ = 1e-8;
     cellFaces_.clear();
     dco_ = true;
     master.clear();
@@ -126,14 +127,27 @@ public:
     rhs.clear();
   }
 
-  std::vector<double> min();
-  std::vector<double> max();
-  int n1();
-  int n2();
-  double tol_;
-  void setMinMax(std::vector<double> min, std::vector<double> max);
+  std::vector<double> min() {
+    return min_;
+  }
+  std::vector<double> max() {
+    return max_;
+  }
+  int n1() {
+    return n1_;
+  }
+  int n2() {
+    return n2_;
+  }
+  void setMinMax(std::vector<double> min, std::vector<double> max) {
+    min_ = min;
+    max_ = max;
+  }
+  void set_n(int n1, int n2) {
+    n1_ = n1;
+    n2_ = n2;
+  }
   void findMinMax();
-  void set_n(int n1, int n2);
   void find_n();
   
   // Test function for debugging
@@ -163,7 +177,8 @@ private:
   int nEqns_;
   bool dco_; // Dune convention ordering of vertices in quad
   Opm::SparseTable<int> cellFaces_;
-  
+  double tol_;
+
   enum SIDE {
     LEFT,
     RIGHT
@@ -192,38 +207,6 @@ private:
 
 }; // MortarHelper
 
-
-template<class GridInterface>
-std::vector<double> MortarHelper<GridInterface>::min() {
-  return min_;
-}
-
-template<class GridInterface>
-std::vector<double> MortarHelper<GridInterface>::max() {
-  return max_;
-}
-
-template<class GridInterface>
-int MortarHelper<GridInterface>::n1() {
-  return n1_;
-}
-
-template<class GridInterface>
-int MortarHelper<GridInterface>::n2() {
-  return n2_;
-}
-
-template<class GridInterface>
-void MortarHelper<GridInterface>::setMinMax(std::vector<double> min, std::vector<double> max) {
-  min_ = min;
-  max_ = max;
-}
-
-template<class GridInterface>
-void MortarHelper<GridInterface>::set_n(int n1, int n2) {
-  n1_ = n1;
-  n2_ = n2;
-}
 
 template<class GridInterface>
 void MortarHelper<GridInterface>::findMinMax() {
@@ -426,6 +409,11 @@ void MortarHelper<GridInterface>::printFace(int face) {
     return;
   }
   std::cout << bg << std::endl;
+  for (int i=0; i<bg.size(); ++i) {
+    BoundaryGrid::Quad quad = bg[i];
+    std::cout << "  " << i+1 << ", Quad centroid: " << quad.pos(0.5,0.5) 
+	      << ", global face index: " << quad.globalFaceIndex << std::endl;
+  }
 }
 
 template<class GridInterface>
