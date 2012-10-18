@@ -488,6 +488,7 @@ namespace Dune {
 	computeInnerProducts(r, grav);
       }
       mortar_.init(*pgrid_, total_num_faces_, flowSolution_.cellFaces_);
+      mortar_.periodicBCsMortar();
     }
 
 
@@ -657,7 +658,6 @@ namespace Dune {
 	       int linsolver_type = 1,
 	       bool same_matrix = false)
     {
-      mortar_.periodicBCsMortar();
       assembleDynamic(r, sat, bc, src);
       //             static int count = 0;
       //             ++count;
