@@ -487,6 +487,8 @@ namespace Dune {
 	initSystemStructure(g, bc);
 	computeInnerProducts(r, grav);
       }
+      pdrop_.resize(total_num_faces_, false);
+      pdrop_ = 0.0;
       mortar_.init(*pgrid_, total_num_faces_, flowSolution_.cellFaces_);
       mortar_.periodicBCsMortar();
     }
@@ -869,8 +871,8 @@ namespace Dune {
     void printSystem(const std::string& prefix)
     {
       writeMatrixToMatlab(S_, prefix + "-mat.dat");
-      writeMatrixToMatlab(mortar_.getMortarMatrix(0), prefix + "-mortarL1.dat");
-      writeMatrixToMatlab(mortar_.getMortarMatrix(1), prefix + "-mortarL2.dat");
+      writeMatrixToMatlab(mortar_.getMortarMatrices()[0], prefix + "-mortarL1.dat");
+      writeMatrixToMatlab(mortar_.getMortarMatrices()[1], prefix + "-mortarL2.dat");
 
       std::string rhsfile(prefix + "-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
@@ -915,6 +917,11 @@ namespace Dune {
     // ----------------------------------------------------------------
     // Physical quantities (derived)
     FlowSolution flowSolution_;
+
+    // pressure drop (in X/Y direction) at face index
+    // That is pdrop_[id] is pressure drop at face id
+    // pdrop_ is used to contruct the augmented rhs
+    BlockVector<VectorBlockType> pdrop_;
 
   public:
     
@@ -1394,25 +1401,83 @@ namespace Dune {
       if (do_regularization_) {
 	S_[0][0] *= 2;
       }
-      Adapter opS(S_);
 
+      std::cout << "HEI fra solveLinearSystem()!\n";
+
+      // Augment matrices
+      std::vector<Matrix> L(mortar_.getMortarMatrices());
+      ASSERT(L.size() == 2);
+      Matrix A(S_);
+      int c = S_.M();
+      for (int i=0; i<L.size(); ++i) { 
+	A = MatrixOps::augment(A, L[i], 0, c, true);
+	c += L[i].M();
+      }
+      writeMatrixToMatlab(A, "augmented-mat.dat");
+      // Comment: augmenting is working
+
+       // Augment rhs
+      // TODO: Check if this can be done more efficiently/nicer
+      S_.umv(pdrop_, rhs_);
+      Vector rhs1(L[0].M());
+      Vector rhs2(L[1].M());
+      L[0].mtv(pdrop_, rhs1);
+      L[1].mtv(pdrop_, rhs2);
+         
+      int c1 = rhs_.size();
+      int c2 = c1 + rhs1.size();
+      Vector augRhs(c);
+      augRhs = 0.0;
+      
+      for (int i=0; i<c1; ++i) {
+	augRhs[i] = rhs_[i];
+      }
+      for (int i=c1; i<c2; ++i) {
+	augRhs[i] = rhs1[i-c1];
+      }
+
+      for (int i=c2; i<c; ++i) {
+	augRhs[i] = rhs2[i-c2];
+      }   
+
+      std::cout << "Augmented rhs:\n" << std::scientific;
+      for (int i=0; i<augRhs.size(); ++i) {
+	std::cout << augRhs[i] << std::endl;
+      }
+     
+      std::string rhsfile("augmented-rhs.dat");
+      std::ofstream rhs(rhsfile.c_str());
+      rhs.precision(15);
+      rhs.setf(std::ios::scientific | std::ios::showpos);
+      std::copy(augRhs.begin(), augRhs.end(),
+		std::ostream_iterator<VectorBlockType>(rhs, "\n"));
+     
+      Adapter opS(A);
+      
       // Construct preconditioner.
-      Dune::SeqILU0<Matrix,Vector,Vector> precond(S_, 1.0);
+      Dune::SeqILU0<Matrix,Vector,Vector> precond(A, 1.0);
 
       // Construct solver for system of linear equations.
       Dune::CGSolver<Vector> linsolve(opS, precond, residTol,
-				      S_.N(), verbosity_level);
+				      c, verbosity_level);
 
       Dune::InverseOperatorResult result;
-      soln_ = 0.0;
+      // soln_ = 0.0;
+      Vector augSoln(c);
+      augSoln = 0.0;
 
       // Solve system of linear equations to recover
       // face/contact pressure values (soln_).
-      linsolve.apply(soln_, rhs_, result);
+      linsolve.apply(augSoln, augRhs, result);
       if (!result.converged) {
 	THROW("Linear solver failed to converge in " << result.iterations << " iterations.\n"
 	      << "Residual reduction achieved is " << result.reduction << '\n');
       }
+
+      // Extract pressure solution. We don't care about the rest (mortar lagrangian multipliers)
+      for (int i=0; i<soln_.size(); ++i) {
+	soln_[i] = augSoln[i];
+      } 
     }
 
 
@@ -1606,8 +1671,12 @@ namespace Dune {
 	    } else {
 	      facetype[k] = Mortar;
 	    }
-	    condval[k]  = bcond.pressureDifference();
+	    condval[k]  = bcond.pressureDifference();	
 	    
+	    if (cbid == 1 || cbid == 3) {
+	      pdrop_[f->index()] = condval[k];
+	    }
+
 	  } else {
 	    ASSERT (bcond.isNeumann());
 	    facetype[k] = Neumann;
