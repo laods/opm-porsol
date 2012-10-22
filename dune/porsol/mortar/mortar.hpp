@@ -158,15 +158,13 @@ public:
 
   void periodicBCsMortar();
 
-  const Matrix getMortarMatrix(int dir) {
-    return L[dir];
+  const std::vector<Matrix> getMortarMatrices() {
+    return L;
   }
 
   const Vector getRhs(int dir) {
     return rhs[dir];
   }
-
-  //void setupDofEqnMapper();
 
 private:
   std::vector<double> min_;
