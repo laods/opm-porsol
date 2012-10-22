@@ -65,8 +65,8 @@ int main(int varnum, char** vararg)
     exit(1);
   }
   else if (varnum == 1) {
-    array<int,3> dims = {2, 2, 2};
-    array<double,3> cellsize = {1, 1, 1};
+    array<int,3> dims = {{3, 3, 3}};
+    array<double,3> cellsize = {{1, 1, 1}};
     grid.createCartesian(dims, cellsize);
     double uniformPORO = 0.2;
     double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
@@ -156,19 +156,19 @@ int main(int varnum, char** vararg)
   solver_mortar.mortar_.printFace(3);
   solver_mortar.mortar_.printFace(4);
 
+  vector<double> src(numCells, 0.0);
+  vector<double> sat(numCells, 0.0);
+
+  // Call solvers
+  solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
+  solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
+
   // Print stats and system matrices
   solver_orig.printStats(std::cout);
   solver_orig.printSystem("orig");
 
   solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
-
-  vector<double> src(numCells, 0.0);
-  vector<double> sat(numCells, 0.0);
-
-  // Call solvers
-  solver_orig.solve(rockParams, sat, fbc_orig, src);
-  solver_mortar.solve(rockParams, sat, fbc_mortar, src);
 
   FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
