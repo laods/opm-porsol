@@ -174,7 +174,7 @@ int main(int varnum, char** vararg)
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
   
   // Print solutions
-  if (printSoln && numCells < 100) {
+  if (printSoln && numCells < 130) {
     cout << "\nCell pressure orig and mortar:\n" << scientific << setprecision(3);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
       cout << c->index() 

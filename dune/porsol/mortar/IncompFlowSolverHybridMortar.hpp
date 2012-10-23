@@ -1475,8 +1475,10 @@ namespace Dune {
       }
 
       // Extract pressure solution. We don't care about the rest (mortar lagrangian multipliers)
+      std::cout << "Face pressures mortar:\n";
       for (int i=0; i<soln_.size(); ++i) {
 	soln_[i] = augSoln[i];
+	std::cout << i << ": " << soln_[i] << std::endl; 
       } 
     }
 
