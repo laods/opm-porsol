@@ -430,6 +430,7 @@ void MortarHelper<GridInterface>::printMortarMatrix(int dir)
   int m = MM.M();
   ASSERT(n == nEqns_);
   for (int i = 0; i < n; ++i) {
+    std::cout << i << ": ";
     for (int j = 0; j < m; ++j) {
       if (MM.exists(i,j)) std::cout << MM[i][j];
       else std::cout << 0.0;

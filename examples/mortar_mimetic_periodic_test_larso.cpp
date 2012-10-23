@@ -111,6 +111,7 @@ int main(int varnum, char** vararg)
   GridInterfaceEuler<CpGrid> g(grid);
 
   // Print gridinfo
+  /*
   cout << "Grid info:\n";
   for (CI cell = g.cellbegin(); cell != g.cellend(); ++cell) {
     cout << cell->index() << "\t" << cell->centroid() << endl;
@@ -120,6 +121,7 @@ int main(int varnum, char** vararg)
       cout << "    " << face->centroid() << endl;
     }
   }
+  */
   
   // Set up Boundary Conditions
   array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
@@ -132,7 +134,9 @@ int main(int varnum, char** vararg)
 			     //FlowBC(FlowBC::Dirichlet, 0.0), 
 			     FlowBC(FlowBC::Periodic, 0.0),
 			     FlowBC(FlowBC::Periodic, 0.0) }};
-
+    //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+  //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+  
   BCs fbc_orig;
   BCs fbc_mortar;
 
@@ -151,10 +155,12 @@ int main(int varnum, char** vararg)
     solver_mortar.mortar_.printMortarMatrix(1);
   }
   
+  /*
   solver_mortar.mortar_.printFace(1);
   solver_mortar.mortar_.printFace(2);
   solver_mortar.mortar_.printFace(3);
   solver_mortar.mortar_.printFace(4);
+  */
 
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);

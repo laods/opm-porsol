@@ -1416,7 +1416,7 @@ namespace Dune {
       writeMatrixToMatlab(A, "augmented-mat.dat");
       // Comment: augmenting is working
 
-       // Augment rhs
+      // Augment rhs
       // TODO: Check if this can be done more efficiently/nicer
       S_.umv(pdrop_, rhs_);
       Vector rhs1(L[0].M());
@@ -1439,11 +1439,6 @@ namespace Dune {
       for (int i=c2; i<c; ++i) {
 	augRhs[i] = rhs2[i-c2];
       }   
-
-      std::cout << "Augmented rhs:\n" << std::scientific;
-      for (int i=0; i<augRhs.size(); ++i) {
-	std::cout << augRhs[i] << std::endl;
-      }
      
       std::string rhsfile("augmented-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
