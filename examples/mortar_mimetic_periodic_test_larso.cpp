@@ -124,18 +124,20 @@ int main(int varnum, char** vararg)
   */
   
   // Set up Boundary Conditions
-  array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+  array<FlowBC, 6> cond = {{ //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+			     //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic, 0.0),
 			     FlowBC(FlowBC::Periodic, 0.0),
 			     //FlowBC(FlowBC::Dirichlet, 0.0),
 			     //FlowBC(FlowBC::Dirichlet, 0.0), 
+			     //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+			     //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0) }};
-    //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-  //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+			     FlowBC(FlowBC::Periodic, 0.0),
+			     FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
   
   BCs fbc_orig;
   BCs fbc_mortar;
@@ -167,12 +169,10 @@ int main(int varnum, char** vararg)
 
   // Call solvers
   solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
-  solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
-
-  // Print stats and system matrices
   solver_orig.printStats(std::cout);
   solver_orig.printSystem("orig");
 
+  solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
   //solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
 
@@ -186,8 +186,19 @@ int main(int varnum, char** vararg)
       cout << c->index() 
 	   << '\t' << soln_orig.pressure(c)
 	   << "\t" << soln_mortar.pressure(c)
-      	   << "\t" << soln_orig.pressure(c) - soln_mortar.pressure(c) << '\n';
+      	   << "\t" << soln_orig.pressure(c)-soln_mortar.pressure(c) << '\n';
     }
+
+    cout << "\nOutlux orig and mortar:\n";
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+      for (FI f = c.facebegin(); f != c.faceend(); ++f) {
+	cout << f->index()
+	     << "\t" << soln_orig.outflux(f)
+	     << "\t" << soln_mortar.outflux(f)
+	     << "\t" << soln_orig.outflux(f)-soln_mortar.outflux(f) << "\n";
+      }
+    }
+
   }
 
   vector<GI::Scalar> cellPressureOrig;
