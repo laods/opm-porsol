@@ -1418,7 +1418,7 @@ namespace Dune {
 
       // Augment rhs
       // TODO: Check if this can be done more efficiently/nicer
-      S_.umv(pdrop_, rhs_);
+      // S_.umv(pdrop_, rhs_); // This is not needed anymore, as it is handled in addCellContrib()
       Vector rhs1(L[0].M());
       Vector rhs2(L[1].M());
       L[0].mtv(pdrop_, rhs1);
@@ -1453,8 +1453,8 @@ namespace Dune {
       Dune::SeqILU0<Matrix,Vector,Vector> precond(A, 1.0);
 
       // Construct solver for system of linear equations.
-      Dune::CGSolver<Vector> linsolve(opS, precond, residTol,
-				      c, verbosity_level);
+      Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol,
+					    c, verbosity_level);
 
       Dune::InverseOperatorResult result;
       // soln_ = 0.0;
@@ -1463,6 +1463,7 @@ namespace Dune {
 
       // Solve system of linear equations to recover
       // face/contact pressure values (soln_).
+      // OBS! This may owerwrite rhs!
       linsolve.apply(augSoln, augRhs, result);
       if (!result.converged) {
 	THROW("Linear solver failed to converge in " << result.iterations << " iterations.\n"
@@ -1778,8 +1779,13 @@ namespace Dune {
 
 	  // INTENTIONAL FALL-THROUGH!
 	  // IOW: Don't insert <break;> here!
-	  //
+	  //	  
 	default:
+
+	  if (facetype[r] == Mortar) {
+	    rhs_[ii] += S(r,r)*condval[r];
+	  }
+
 	  int c = 0;
 	  for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
 	    // Indirection for periodic BC handling.

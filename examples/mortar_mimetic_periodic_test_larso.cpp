@@ -173,7 +173,7 @@ int main(int varnum, char** vararg)
   solver_orig.printStats(std::cout);
   solver_orig.printSystem("orig");
 
-  solver_mortar.printStats(std::cout);
+  //solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
 
   FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
@@ -185,7 +185,8 @@ int main(int varnum, char** vararg)
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
       cout << c->index() 
 	   << '\t' << soln_orig.pressure(c)
-	   << "\t" << soln_mortar.pressure(c) << '\n';
+	   << "\t" << soln_mortar.pressure(c)
+      	   << "\t" << soln_orig.pressure(c) - soln_mortar.pressure(c) << '\n';
     }
   }
 
