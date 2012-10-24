@@ -1438,7 +1438,12 @@ namespace Dune {
 
       for (int i=c2; i<c; ++i) {
 	augRhs[i] = rhs2[i-c2];
-      }   
+      }
+
+      std::cout << "augRhs mortar:\n";
+      for (int i=0; i<augRhs.size(); ++i) {
+	std::cout << i << ": " << augRhs[i] << std::endl; 
+      }
      
       std::string rhsfile("augmented-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
@@ -1731,10 +1736,23 @@ namespace Dune {
     {
       typedef typename L2G::const_iterator it;
 
+      bool print = false;
+      if (l2g[0] == 49) { // if in cell 23
+	print = true;
+	std::cout << "In cell 23:\n";
+      }
+
       int r = 0;
       for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
 	// Indirection for periodic BC handling.
 	int ii = *i;
+
+	if (print) {
+	  std::cout << "r=" << r << ", ii=" << ii << std::endl
+		    << "  facetype[r]=" << facetype[r]
+		    << ", condval[r]=" << condval[r]
+		    << ", ppartner[r]=" << ppartner[r] << std::endl;
+	}
 
 	switch (facetype[r]) {
 	case Dirichlet:
@@ -1764,6 +1782,9 @@ namespace Dune {
 	  {
 	    const double a = S(r,r), b = a * condval[r];
 
+	    if (print)
+	      std::cout << "  a=" << S(r,r) << ", b=" << b << std::endl;
+
 	    // Equation (1)
 	    S_  [         ii][         ii] += a;
 	    S_  [         ii][ppartner[r]] -= a;
@@ -1781,15 +1802,29 @@ namespace Dune {
 	  // IOW: Don't insert <break;> here!
 	  //	  
 	default:
+	  
+	  if(print)
+	    std::cout << "    In default:\n";
 
 	  if (facetype[r] == Mortar) {
 	    rhs_[ii] += S(r,r)*condval[r];
+	    if (print)
+	      std::cout << "    Hi from if Mortar. S(r,r)*condval[r] = " << S(r,r)*condval[r]
+			<< std::endl;
 	  }
 
 	  int c = 0;
 	  for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
 	    // Indirection for periodic BC handling.
 	    int jj = *j;
+
+	    if (print) {
+	      std::cout << "    c=" << c << ", jj=" << jj << std::endl
+			<< "    facetype[c]=" << facetype[c]
+			<< ", condval[c]=" << condval[c]
+			<< ", ppartner[c]=" << ppartner[c] 
+			<< ", S(r,c)=" << S(r,c) << std::endl;
+	    }
 
 	    if (facetype[c] == Dirichlet) {
 	      rhs_[ii] -= S(r,c) * condval[c];
