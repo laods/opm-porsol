@@ -124,8 +124,8 @@ int main(int varnum, char** vararg)
   */
   
   // Set up Boundary Conditions
-  array<FlowBC, 6> cond = {{ //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+  array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic, 0.0),
@@ -135,9 +135,9 @@ int main(int varnum, char** vararg)
 			     //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
 			     //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+			     FlowBC(FlowBC::Periodic, 0.0) }};
+  //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+  //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
   
   BCs fbc_orig;
   BCs fbc_mortar;
@@ -175,6 +175,7 @@ int main(int varnum, char** vararg)
   solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
   //solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
+  double maxIntDiff = solver_mortar.checkFluxPeriodicity();
 
   FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();

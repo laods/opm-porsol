@@ -782,6 +782,43 @@ namespace Dune {
       return face_fluxes.maxMod();
     }
 
+    /// @brief
+    ///    Check if flux is periodic. That is if total outflux
+    ///    on one boundary equals total outflux on opposite
+    ///    boundary. Tests only in x- and y-direction
+    ///
+    /// @return
+    ///    Max error.
+    double checkFluxPeriodicity() {
+      
+      typedef typename GridInterface::CellIterator CI;
+      typedef typename CI           ::FaceIterator FI;
+      const std::vector<int>& cell     = flowSolution_.cellno_;
+      Opm::SparseTable<double>& cflux = flowSolution_.outflux_;
+      
+      std::vector<double> fluxIntegral(4,0.0);
+
+      for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+	const int cell_index = cell[c->index()];
+	for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+	  int f_loc_idx = f->localIndex();
+	  if (f->boundary() && f_loc_idx < 4) {
+	    double flux = cflux[cell_index][f_loc_idx];
+	    fluxIntegral[f_loc_idx] += f->area() * flux;	      
+	  }
+	}
+      }
+      
+      double xDiff = fluxIntegral[0] + fluxIntegral[1];
+      double yDiff = fluxIntegral[2] + fluxIntegral[3];
+
+      std::cout << "Flux integrals in x direction differ by " 
+		<< xDiff << std::endl;
+      std::cout << "Flux integrals in y direction differ by " 
+		<< yDiff << std::endl;
+
+      return std::max(xDiff, yDiff);
+    }
 
     /// @brief
     ///    Type representing the solution to the problem defined
