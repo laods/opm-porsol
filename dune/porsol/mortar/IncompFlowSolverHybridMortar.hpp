@@ -743,7 +743,7 @@ namespace Dune {
 	  int f_ix = cf[cell_index][f->localIndex()];
 	  double flux = cflux[cell_index][f->localIndex()];
 	  if (f->boundary()) {
-	    if (ppartner_dof_.empty()) {
+	    if (ppartner_dof_.empty() || f->localIndex()<4) {
 	      continue;
 	    }
 	    int partner_f_ix = ppartner_dof_[f_ix];
@@ -764,7 +764,7 @@ namespace Dune {
 	  int f_ix = cf[cell_index][f->localIndex()];
 	  double& flux = cflux[cell_index][f->localIndex()];
 	  if (f->boundary()) {
-	    if (ppartner_dof_.empty()) {
+	    if (ppartner_dof_.empty() || f->localIndex()<4) {
 	      continue;
 	    }
 	    int partner_f_ix = ppartner_dof_[f_ix];
