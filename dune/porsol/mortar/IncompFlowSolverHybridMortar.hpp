@@ -1825,6 +1825,9 @@ namespace Dune {
 	    if (print)
 	      std::cout << "  a=" << S(r,r) << ", b=" << b << std::endl;
 
+	    if (ii == 23)
+	      std::cout << "ii=23 in case Periodic!\n";
+
 	    // Equation (1)
 	    S_  [         ii][         ii] += a;
 	    S_  [         ii][ppartner[r]] -= a;
@@ -1866,6 +1869,8 @@ namespace Dune {
 			<< ", S(r,c)=" << S(r,c) << std::endl;
 	    }
 
+	    //if Mortar ??
+
 	    if (facetype[c] == Dirichlet) {
 	      rhs_[ii] -= S(r,c) * condval[c];
 	      continue;
@@ -1873,15 +1878,30 @@ namespace Dune {
 	    if (facetype[c] == Periodic) {
 	      ASSERT ((0 <= ppartner[c]) && (ppartner[c] < int(rhs_.size())));
 	      ASSERT (jj != ppartner[c]);
+	      // If periodic, then contributions should be sent to ppartner if
+	      // ppartner < jj s.t. 
+	      //   A + S(r,c)*x0      = a
+	      //   A + S(r,c)*(x1+pd) = a
+	      //   A + S(r,c)*x1      = a - S(r,c)*pd
+	      // Here A and a are just "the rest" of equation nr. ii
 	      if (ppartner[c] < jj) {
-		rhs_[ii] -= S(r,c) * condval[c];
+		if (ii == 23)
+		  std::cout << "ii=23 i default->Periodic. first cell face: " << l2g[0] 
+			    << ", r= " << r << ", c=" << c  << std::endl;
+		rhs_[ii] -= S(r,c) * condval[c]; 
+		// Dersom denne^ kommenteres ut, får man i det minste en uriktig løsning...
 		jj = ppartner[c];
+	      }
+	      if (facetype[r] == Mortar) {
+		// ??
 	      }
 	    }
 	    S_[ii][jj] += S(r,c);
 	  }
 	  break;
 	}
+	if (ii==23)
+	  std::cout << "ii=23 at last. rhd[r]=" << rhs[r] << std::endl;
 	rhs_[ii] += rhs[r];
       }
     }
