@@ -793,31 +793,34 @@ namespace Dune {
       
       typedef typename GridInterface::CellIterator CI;
       typedef typename CI           ::FaceIterator FI;
-      const std::vector<int>& cell     = flowSolution_.cellno_;
+      const std::vector<int>& cell    = flowSolution_.cellno_;
       Opm::SparseTable<double>& cflux = flowSolution_.outflux_;
       
-      std::vector<double> fluxIntegral(4,0.0);
+      std::vector<double> fluxIntegral(6,0.0);
 
       for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	const int cell_index = cell[c->index()];
 	for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-	  int f_loc_idx = f->localIndex();
-	  if (f->boundary() && f_loc_idx < 4) {
-	    double flux = cflux[cell_index][f_loc_idx];
-	    fluxIntegral[f_loc_idx] += f->area() * flux;	      
+	  if (f->boundary()) {
+	    double flux = cflux[cell_index][f->localIndex()];
+	    fluxIntegral[f->localIndex()] += f->area() * flux;	      
 	  }
 	}
       }
       
-      double xDiff = fluxIntegral[0] + fluxIntegral[1];
-      double yDiff = fluxIntegral[2] + fluxIntegral[3];
+      std::vector<double> diff;
+      diff.push_back(std::abs(fluxIntegral[0] + fluxIntegral[1]));
+      diff.push_back(std::abs(fluxIntegral[2] + fluxIntegral[3]));
+      diff.push_back(std::abs(fluxIntegral[4] + fluxIntegral[5]));
 
       std::cout << "Flux integrals in x direction differ by " 
-		<< xDiff << std::endl;
+		<< diff[0] << std::endl;
       std::cout << "Flux integrals in y direction differ by " 
-		<< yDiff << std::endl;
+		<< diff[1] << std::endl;
+      std::cout << "Flux integrals in z direction differ by " 
+		<< diff[2] << std::endl;
 
-      return std::max(xDiff, yDiff);
+      return *(std::max_element(diff.begin(), diff.end()));
     }
 
     /// @brief

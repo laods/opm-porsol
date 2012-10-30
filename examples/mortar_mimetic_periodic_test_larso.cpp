@@ -169,13 +169,17 @@ int main(int varnum, char** vararg)
 
   // Call solvers
   solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
+  double maxMod_orig = solver_orig.postProcessFluxes();
   solver_orig.printStats(std::cout);
   solver_orig.printSystem("orig");
 
   solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
   //solver_mortar.printStats(std::cout);
   solver_mortar.printSystem("mortar");
+  
   double maxIntDiff = solver_mortar.checkFluxPeriodicity();
+  double maxMod_mortar = solver_mortar.postProcessFluxes();
+  maxIntDiff = solver_mortar.checkFluxPeriodicity();
 
   FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
