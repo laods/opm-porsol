@@ -370,7 +370,8 @@ public:
       cfuncs.resize(dim);
       for (int i=0; i < dim; ++i) {
         std::vector<double> grid;
-        grid = gaussLobattoLegendreGrid(dims[i]);
+        //grid = gaussLobattoLegendreGrid(dims[i]);
+	grid = gaussLegendreGrid(dims[i]);
         for (int j=0;j<dims[i];++j)
           cfuncs[i].push_back(CardinalFunction(grid,j));
       }
