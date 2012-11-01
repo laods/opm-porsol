@@ -1,6 +1,8 @@
 #ifndef DUNE_DYNMATRIXEIGENVALUES_HH
 #define DUNE_DYNMATRIXEIGENVALUES_HH
 
+#include "dynmatrixev.cpp"
+
 namespace Dune {
 
 namespace DynamicMatrixHelp {
