@@ -55,27 +55,30 @@ int main(int varnum, char** vararg)
   const int dim = 3; 
   bool printSoln = true;
   bool vtk = false;
+  int dir_pdrop = 0;
   
   CpGrid grid;
   ReservoirPropertyCapillary<dim> rockParams;
 
   // Check input. If no input given, create cartesian grid and uniform rock parameters
-  if (varnum > 2) { //Wrong nr of input param
-    cerr << "Wrong nr of input parameters. Only eclipse grid file name is allowed. If no grid file provided, a uniform cartesian grid is constructed." << endl;
+  if (varnum > 3) { //Wrong nr of input param
+    cerr << "Wrong nr of input parameters. Input: bc (0, 1 or 2, default 0) + eclipse file. If no grid file provided, a uniform cartesian grid is constructed." << endl;
     exit(1);
   }
-  else if (varnum == 1) {
+  else if (varnum == 1 || varnum == 2) {
     array<int,3> dims = {{3, 3, 3}};
     array<double,3> cellsize = {{1, 1, 1}};
     grid.createCartesian(dims, cellsize);
     double uniformPORO = 0.2;
     double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
     rockParams.init(grid.size(0), uniformPORO, uniformPERM);
+    if (varnum == 2) 
+      dir_pdrop = atoi(vararg[1]);
   }
   
   else {
 
-    const char* ECLIPSEFILENAME(vararg[1]);
+    const char* ECLIPSEFILENAME(vararg[2]);
     ifstream eclipsefile(ECLIPSEFILENAME, ios::in);
     if (eclipsefile.fail()) {
       cerr << "Error: " << ECLIPSEFILENAME << " not found or readable." << endl;
@@ -100,7 +103,11 @@ int main(int varnum, char** vararg)
 
     grid.readEclipseFormat(ECLIPSEFILENAME, ztol, false);
     rockParams.init(eclParser, grid.globalCell());
-  }  
+    
+    dir_pdrop = atoi(vararg[1]);
+}  
+
+  ASSERT(dir_pdrop > -1 && dir_pdrop < 3);
     
   int numCells = grid.size(0);
 
@@ -124,21 +131,34 @@ int main(int varnum, char** vararg)
   */
   
   // Set up Boundary Conditions
-  array<FlowBC, 6> cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-			     //FlowBC(FlowBC::Dirichlet, 1.0*Opm::unit::barsa),
-			     //FlowBC(FlowBC::Dirichlet,-1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     //FlowBC(FlowBC::Dirichlet, 0.0),
-			     //FlowBC(FlowBC::Dirichlet, 0.0), 
-			     //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-			     //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-			     FlowBC(FlowBC::Periodic, 0.0),
-			     FlowBC(FlowBC::Periodic, 0.0) }};
-  //FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-  //FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
-  
+  array<FlowBC,6> cond;
+  switch (dir_pdrop) {
+  case 0:
+    cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0) }};
+    break;
+  case 1:
+    cond = {{ FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0) }};
+    break;
+  case 2:
+    cond = {{ FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+    break;
+  }
+
   BCs fbc_orig;
   BCs fbc_mortar;
 
@@ -225,6 +245,7 @@ int main(int varnum, char** vararg)
     writer_mortar.write(vtufile_mortar);
   }
 
+  cout << "dir_pdrop: " << dir_pdrop << endl;
 
   return 0;
 }
