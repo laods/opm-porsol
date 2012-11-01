@@ -522,7 +522,8 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	  dof = getEquationForDof(qu);
 	//std::cout << "      dof = " << dof << std::endl;
 	for (int j=0;j<4;++j) {
-	  adj[dof].insert(interface[p].v[j].i); 
+	  //adj[dof].insert(interface[p].v[j].i);
+	  adj[dof].insert(p*4+j);
 	  // No need for multiplying with 3 (only one DOF per vertex)
 	}
 	  
@@ -550,12 +551,13 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
   }
 
   Matrix B;
-  MatrixOps::fromAdjacency(B,adj,nEqns_,interface.totalNodes());
+  //MatrixOps::fromAdjacency(B,adj,nEqns_,interface.totalNodes());
+  MatrixOps::fromAdjacency(B,adj,nEqns_,interface.size()*4);
 
   // get a set of P0 shape functions for the face pressures
   P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
-  // get a set of P1 shape functions for multipliers
-  P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
+  // get a set of PN shape functions for multipliers
+  PNShapeFunctionSet<2> lbasis(2,2);
   // get a reference element
   Dune::GeometryType gt;
   gt.makeCube(2);
@@ -600,7 +602,9 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	  indexi = getEquationForDof(qu);
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
-	    int indexj = qi.v[j].i;
+	    //int indexj = qi.v[j].i;
+	    int indexj = p*4+j;
+
 	    std::cout << "p=" << p << ", q=" << q 
 		      << ", j=" << j << ", indexj=" << indexj 
 		      << ", gfi=" << qu.globalFaceIndex
