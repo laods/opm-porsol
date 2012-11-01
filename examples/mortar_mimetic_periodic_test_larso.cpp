@@ -263,5 +263,21 @@ int main(int varnum, char** vararg)
 
   cout << "dir_pdrop: " << dir_pdrop << endl;
 
+  // Play with PNShapeFunctionSet
+  Dune::FieldVector<double,2> local(0.0);
+  PNShapeFunctionSet<2> lbasis(2,2);
+  for (int f=0; f<lbasis.size(); ++f) {
+    cout << "Shapefunction " << f << ":\n" << fixed;
+    for (int i=0; i<11; ++i) {
+      local[0] = i/10.0;
+      for (int j=0; j<11; ++j) {
+	local[1] = j/10.0;
+	cout << lbasis[f].evaluateFunction(local) << " ";
+      }
+      cout << endl;
+    } 
+  }
+
+
   return 0;
 }
