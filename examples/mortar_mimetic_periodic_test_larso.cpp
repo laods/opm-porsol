@@ -134,43 +134,44 @@ int main(int varnum, char** vararg)
   array<FlowBC,6> cond;
   switch (dir_pdrop) {
   case 0:
-    cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0) }};
+    cond[0] = FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa);
+    cond[1] = FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa);
+    cond[2] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[3] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[4] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[5] = FlowBC(FlowBC::Periodic, 0.0);
     break;
   case 1:
-    cond = {{ FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0) }};
+    cond[0] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[1] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[2] = FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa);
+    cond[3] = FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa);
+    cond[4] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[5] = FlowBC(FlowBC::Periodic, 0.0);
     break;
   case 2:
-    cond = {{ FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+    cond[0] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[1] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[2] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[3] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[4] = FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa);
+    cond[5] = FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa);
     break;
   case 3:
-    cond = {{ FlowBC(FlowBC::Dirichlet, 0.0),
-	      FlowBC(FlowBC::Dirichlet, 0.0),
-	      FlowBC(FlowBC::Dirichlet, 0.0),
-	      FlowBC(FlowBC::Dirichlet, 0.0),
-	      FlowBC(FlowBC::Dirichlet, 0.0),
-	      FlowBC(FlowBC::Dirichlet, 0.0) }};
+    cond[0] = FlowBC(FlowBC::Dirichlet, 0.0);
+    cond[1] = FlowBC(FlowBC::Dirichlet, 0.0);
+    cond[2] = FlowBC(FlowBC::Dirichlet, 0.0);
+    cond[3] = FlowBC(FlowBC::Dirichlet, 0.0);
+    cond[4] = FlowBC(FlowBC::Dirichlet, 0.0);
+    cond[5] = FlowBC(FlowBC::Dirichlet, 0.0);
+    break;
   case 4:
-    cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Periodic, 0.0),
-	      FlowBC(FlowBC::Neumann, 0.0),
-	      FlowBC(FlowBC::Neumann, 0.0) }};
+    cond[0] = FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa);
+    cond[1] = FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa);
+    cond[2] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[3] = FlowBC(FlowBC::Periodic, 0.0);
+    cond[4] = FlowBC(FlowBC::Neumann, 0.0);
+    cond[5] = FlowBC(FlowBC::Neumann, 0.0);
     break;
   }
 
