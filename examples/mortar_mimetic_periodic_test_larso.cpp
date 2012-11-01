@@ -107,7 +107,7 @@ int main(int varnum, char** vararg)
     dir_pdrop = atoi(vararg[1]);
 }  
 
-  ASSERT(dir_pdrop > -1 && dir_pdrop < 3);
+  ASSERT(dir_pdrop > -1 && dir_pdrop < 5);
     
   int numCells = grid.size(0);
 
@@ -156,6 +156,21 @@ int main(int varnum, char** vararg)
 	      FlowBC(FlowBC::Periodic, 0.0),
 	      FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
 	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa) }};
+    break;
+  case 3:
+    cond = {{ FlowBC(FlowBC::Dirichlet, 0.0),
+	      FlowBC(FlowBC::Dirichlet, 0.0),
+	      FlowBC(FlowBC::Dirichlet, 0.0),
+	      FlowBC(FlowBC::Dirichlet, 0.0),
+	      FlowBC(FlowBC::Dirichlet, 0.0),
+	      FlowBC(FlowBC::Dirichlet, 0.0) }};
+  case 4:
+    cond = {{ FlowBC(FlowBC::Periodic, 1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic,-1.0*Opm::unit::barsa),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Periodic, 0.0),
+	      FlowBC(FlowBC::Neumann, 0.0),
+	      FlowBC(FlowBC::Neumann, 0.0) }};
     break;
   }
 
