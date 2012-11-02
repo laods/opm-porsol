@@ -1449,7 +1449,9 @@ namespace Dune {
       ASSERT(L.size() == 2);
       Matrix A(S_);
       int c = S_.M();
+      double frobNorm = S_.frobenius_norm(); // For scaling
       for (int i=0; i<L.size(); ++i) { 
+	L[i] *= frobNorm;
 	A = MatrixOps::augment(A, L[i], 0, c, true);
 	c += L[i].M();
       }
@@ -1458,6 +1460,7 @@ namespace Dune {
 
       // Augment rhs
       // TODO: Check if this can be done more efficiently/nicer
+      //       If so, remember to scale with frobNorm!
       // S_.umv(pdrop_, rhs_); // This is not needed anymore, as it is handled in addCellContrib()
       Vector rhs1(L[0].M());
       Vector rhs2(L[1].M());
