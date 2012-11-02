@@ -444,8 +444,6 @@ void MortarHelper<GridInterface>::printMortarMatrix(int dir)
 template<class GridInterface>
 void MortarHelper<GridInterface>::periodicBCsMortar() {
 
-  std::cout << "\nBuilding Mortar matrices...\n";
-
   // Based on ElasticityUpscale::periodicBCsMortar()
   // But not MPC part (that is only step 3-6)
 
@@ -467,20 +465,15 @@ void MortarHelper<GridInterface>::periodicBCsMortar() {
   BoundaryGrid lambday = BoundaryGrid::uniform(fmin, fmax, n1_, 1, dco_);
 
   // Step 5: Calculates the coupling matrix L1 between left/right sides
-  std::cout << "  Calling findLMartixMortar for left side (X)\n";
   Matrix L1_left  = findLMatrixMortar(master[0], lambdax, 0);
-  std::cout << "  Calling findLMartixMortar for right side (X)\n";
   Matrix L1_right = findLMatrixMortar(master[1], lambdax, 0);
   L.push_back(MatrixOps::Axpy(L1_left, L1_right, -1));
 
   // Step 6: Calculates the coupling matrix L2 between front/back sides
-  std::cout << "  Calling findLMartixMortar for front side (X)\n";
   Matrix L2_left  = findLMatrixMortar(master[2], lambday, 1);
-  std::cout << "  Calling findLMartixMortar for back side (X)\n";
   Matrix L2_right = findLMatrixMortar(master[3], lambday, 1);
   L.push_back(MatrixOps::Axpy(L2_left, L2_right, -1));
   
-  std::cout << "Mortar matrices finished!\n\n";
 }
 
 
@@ -492,13 +485,6 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 
   std::vector< std::set<int> > adj;
   adj.resize(nEqns_);
-
-  // Debugging
-  std::cout << "Print boundary grid in storage order:\n";
-  for (int i=0; i<b1.size(); ++i) {
-    std::cout << i << " gfi = " << b1[i].globalFaceIndex 
-	      << ", first corner = " << b1[i].v[0].c << std::endl;
-  }
 
   // process pillar by pillar
   size_t per_pillar = b1.size()/interface.size();
@@ -514,13 +500,11 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	// Own code:
 	//const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
 	const BoundaryGrid::Quad& qu(b1[p+per_pillar*q]);
-	//std::cout << "    @ pillar #" << p << ", quad #" << q << ": \n";
 	int dof;
 	if (cellFaces_.empty()) 
 	  dof = getEquationForDof(qu, dir);
 	else
 	  dof = getEquationForDof(qu);
-	//std::cout << "      dof = " << dof << std::endl;
 	for (int j=0;j<4;++j) {
 	  //adj[dof].insert(interface[p].v[j].i);
 	  adj[dof].insert(p*4+j);
@@ -604,21 +588,6 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	  for (int j=0;j<4;++j) {
 	    //int indexj = qi.v[j].i;
 	    int indexj = p*4+j;
-
-	    std::cout << "p=" << p << ", q=" << q 
-		      << ", j=" << j << ", indexj=" << indexj 
-		      << ", gfi=" << qu.globalFaceIndex
-		      << " (Vertices mortar quad: ";
-	    for (int k=0;k<4;++k) {
-	      std::cout << "[" << qi.v[k].c << "] ";
-	    }
-	    std::cout << ")" << std::endl;
-	    std::cout << "  (Vertices small quad: ";
-	    for (int k=0;k<4;++k) {
-	      std::cout << "[" << qu.v[k].c << "] ";
-	    }
-	    std::cout << ")" << std::endl;
-
 	    B[indexi][indexj] += E[i][j];
 	  }
 	}
@@ -696,20 +665,15 @@ int MortarHelper<GridInterface>::getEquationForDof(const BoundaryGrid::Quad& qua
   }
 
   GlobalCoordinate faceCentroid = centroid(vertices,dir);
-  //std::cout << "      Centroid quad: " << faceCentroid << std::endl;
 
   typedef typename GridInterface::CellIterator CI;
   typedef typename CI::FaceIterator FI;
   
   for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-      //std::cout << "        Testing face #" << f->index()
-      //	<< ", centroid: " << f->centroid() << " ...";
       if ( (f->boundary()) &&  (isOnPoint(f->centroid(), faceCentroid)) ) {
-	//std::cout << " Accepted!\n";
 	return f->index();
       }
-      //std::cout << std::endl;
     }
   }
 
@@ -724,11 +688,6 @@ MortarHelper<GridInterface>::centroid(std::vector<MortarHelper<GridInterface>::G
 {
   // Calculates 3D centroid of a quad defined by vertices. 
   // Assumes that all vertices lie in the same plane (XY, XZ or YZ)
-
-  //std::cout << "      Vertices: " << vertices[0] << std::endl;
-  //std::cout << "                " << vertices[1] << std::endl;
-  //std::cout << "                " << vertices[2] << std::endl;
-  //std::cout << "                " << vertices[3] << std::endl;
 
   int coord1, coord2;
   GlobalCoordinate result(0.0);
