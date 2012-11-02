@@ -1442,8 +1442,6 @@ namespace Dune {
 	S_[0][0] *= 2;
       }
 
-      std::cout << "HEI fra solveLinearSystem()!\n";
-
       // Augment matrices
       std::vector<Matrix> L(mortar_.getMortarMatrices());
       ASSERT(L.size() == 2);
@@ -1482,11 +1480,6 @@ namespace Dune {
       for (int i=c2; i<c; ++i) {
 	augRhs[i] = rhs2[i-c2];
       }
-
-      std::cout << "augRhs mortar:\n";
-      for (int i=0; i<augRhs.size(); ++i) {
-	std::cout << i << ": " << augRhs[i] << std::endl; 
-      }
      
       std::string rhsfile("augmented-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
@@ -1519,10 +1512,8 @@ namespace Dune {
       }
 
       // Extract pressure solution. We don't care about the rest (mortar lagrangian multipliers)
-      std::cout << "Face pressures mortar:\n";
       for (int i=0; i<soln_.size(); ++i) {
 	soln_[i] = augSoln[i];
-	std::cout << i << ": " << soln_[i] << std::endl; 
       } 
     }
 
@@ -1779,23 +1770,10 @@ namespace Dune {
     {
       typedef typename L2G::const_iterator it;
 
-      bool print = false;
-      if (l2g[0] == 49) { // if in cell 23
-	print = true;
-	std::cout << "In cell 23:\n";
-      }
-
       int r = 0;
       for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
 	// Indirection for periodic BC handling.
 	int ii = *i;
-
-	if (print) {
-	  std::cout << "r=" << r << ", ii=" << ii << std::endl
-		    << "  facetype[r]=" << facetype[r]
-		    << ", condval[r]=" << condval[r]
-		    << ", ppartner[r]=" << ppartner[r] << std::endl;
-	}
 
 	switch (facetype[r]) {
 	case Dirichlet:
@@ -1825,12 +1803,6 @@ namespace Dune {
 	  {
 	    const double a = S(r,r), b = a * condval[r];
 
-	    if (print)
-	      std::cout << "  a=" << S(r,r) << ", b=" << b << std::endl;
-
-	    if (ii == 23)
-	      std::cout << "ii=23 in case Periodic!\n";
-
 	    // Equation (1)
 	    S_  [         ii][         ii] += a;
 	    S_  [         ii][ppartner[r]] -= a;
@@ -1848,31 +1820,16 @@ namespace Dune {
 	  // IOW: Don't insert <break;> here!
 	  //	  
 	default:
-	  
-	  if(print)
-	    std::cout << "    In default:\n";
 
 	  if (facetype[r] == Mortar) {
+	    // TODO: Check sign
 	    rhs_[ii] += S(r,r)*condval[r];
-	    if (print)
-	      std::cout << "    Hi from if Mortar. S(r,r)*condval[r] = " << S(r,r)*condval[r]
-			<< std::endl;
 	  }
 
 	  int c = 0;
 	  for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
 	    // Indirection for periodic BC handling.
 	    int jj = *j;
-
-	    if (print) {
-	      std::cout << "    c=" << c << ", jj=" << jj << std::endl
-			<< "    facetype[c]=" << facetype[c]
-			<< ", condval[c]=" << condval[c]
-			<< ", ppartner[c]=" << ppartner[c] 
-			<< ", S(r,c)=" << S(r,c) << std::endl;
-	    }
-
-	    //if Mortar ??
 
 	    if (facetype[c] == Dirichlet) {
 	      rhs_[ii] -= S(r,c) * condval[c];
@@ -1888,23 +1845,14 @@ namespace Dune {
 	      //   A + S(r,c)*x1      = a - S(r,c)*pd
 	      // Here A and a are just "the rest" of equation nr. ii
 	      if (ppartner[c] < jj) {
-		if (ii == 23)
-		  std::cout << "ii=23 i default->Periodic. first cell face: " << l2g[0] 
-			    << ", r= " << r << ", c=" << c  << std::endl;
 		rhs_[ii] -= S(r,c) * condval[c]; 
-		// Dersom denne^ kommenteres ut, får man i det minste en uriktig løsning...
 		jj = ppartner[c];
-	      }
-	      if (facetype[r] == Mortar) {
-		// ??
 	      }
 	    }
 	    S_[ii][jj] += S(r,c);
 	  }
 	  break;
 	}
-	if (ii==23)
-	  std::cout << "ii=23 at last. rhd[r]=" << rhs[r] << std::endl;
 	rhs_[ii] += rhs[r];
       }
     }
