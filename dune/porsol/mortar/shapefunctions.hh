@@ -372,7 +372,10 @@ public:
         std::vector<double> grid;
         //grid = gaussLobattoLegendreGrid(dims[i]);
 	grid = gaussLegendreGrid(dims[i]);
-        for (int j=0;j<dims[i];++j)
+	// Transform grid to [0,1]
+      	for (int j=0;j<dims[i];++j)
+	  grid[j] = (grid[j]+1.0)/2.0;
+	for (int j=0;j<dims[i];++j)
           cfuncs[i].push_back(CardinalFunction(grid,j));
       }
       int l=0;
