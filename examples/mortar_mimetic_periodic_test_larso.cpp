@@ -182,8 +182,8 @@ int main(int varnum, char** vararg)
     solver_mortar.mortar_.printMortarMatrix(0);
     solver_mortar.mortar_.printMortarMatrix(1);
   }
-  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + inputString);
-  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[1], "L2-" + inputString);
+  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + inputString + ".dat");
+  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[1], "L2-" + inputString + ".dat");
 
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);
