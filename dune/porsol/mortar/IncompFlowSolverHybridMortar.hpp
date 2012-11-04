@@ -911,9 +911,7 @@ namespace Dune {
     void printSystem(const std::string& prefix)
     {
       writeMatrixToMatlab(S_, prefix + "-mat.dat");
-      writeMatrixToMatlab(mortar_.getMortarMatrices()[0], prefix + "-mortarL1.dat");
-      writeMatrixToMatlab(mortar_.getMortarMatrices()[1], prefix + "-mortarL2.dat");
-
+  
       std::string rhsfile(prefix + "-rhs.dat");
       std::ofstream rhs(rhsfile.c_str());
       rhs.precision(15);
