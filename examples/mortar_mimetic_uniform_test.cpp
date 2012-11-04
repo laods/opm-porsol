@@ -55,28 +55,28 @@ int main(int varnum, char** vararg)
   bool printSoln = true;
   bool vtk = false;
   int dir_pdrop = 0;
-  
+  int gridsize = 3;  
+
   CpGrid grid;
   ReservoirPropertyCapillary<dim> rockParams;
 
   // Check input. If no input given, create cartesian grid and uniform rock parameters
   if (varnum > 2) { //Wrong nr of input param
-    cerr << "Wrong nr of input parameters. Only grid dim is taken as input" << endl;
+    cerr << "Wrong nr of input parameters. Only grid size is taken as input" << endl;
     exit(1);
   }
   else {
     array<int,3> dims = {{3, 3, 3}};
     if (varnum == 2) {
-      int dim = atoi(vararg[1]);
-      dims = {{dim, dim, dim}};
-      if (dim < 3) {
-	cout << "Dimension must be 3 or higher. Setting dim = 3." << endl;
-	dim = 3;
+      gridsize = atoi(vararg[1]);
+      if (gridsize < 3) {
+	cout << "Grid size must be 3 or higher. Setting gridsize = 3." << endl;
+	gridsize = 3;
       }
       else {
-	cout << "Dimension set to " << dim << endl;
+	cout << "Gridsze set to " << gridsize << endl;
       }
-      dims = {{dim, dim, dim}};
+      dims = {{gridsize, gridsize, gridsize}};
     }
     array<double,3> cellsize = {{1, 1, 1}};
     grid.createCartesian(dims, cellsize);
@@ -119,10 +119,11 @@ int main(int varnum, char** vararg)
   FlowSolverMortar solver_mortar;
   solver_orig.init(g, rockParams, gravity, fbc_orig);
   solver_orig.printStats(std::cout);
+  cout << endl;
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);  
 
   // Write mortar matrices to matlab
-  string dimString = "uniform" + to_string(dim) + "x" + to_string(dim) + "x" + to_string(dim) + "grid";
+  string dimString = "uniform" + to_string(gridsize) + "x" + to_string(gridsize) + "x" + to_string(gridsize) + "grid";
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + dimString + ".dat");
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L2-" + dimString + ".dat");
 
