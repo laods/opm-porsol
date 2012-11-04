@@ -58,6 +58,7 @@ int main(int varnum, char** vararg)
   int dir_pdrop = 0;
   
   CpGrid grid;
+  string inputString;
   ReservoirPropertyCapillary<dim> rockParams;
 
   // Check input. If no input given, create cartesian grid and uniform rock parameters
@@ -74,11 +75,13 @@ int main(int varnum, char** vararg)
     rockParams.init(grid.size(0), uniformPORO, uniformPERM);
     if (varnum == 2) 
       dir_pdrop = atoi(vararg[1]);
+    inputString = "uniform3x3x3-pdrop" + string(vararg[1]);
   }
   
   else {
 
     const char* ECLIPSEFILENAME(vararg[2]);
+    inputString = string(ECLIPSEFILENAME);
     ifstream eclipsefile(ECLIPSEFILENAME, ios::in);
     if (eclipsefile.fail()) {
       cerr << "Error: " << ECLIPSEFILENAME << " not found or readable." << endl;
@@ -105,7 +108,7 @@ int main(int varnum, char** vararg)
     rockParams.init(eclParser, grid.globalCell());
     
     dir_pdrop = atoi(vararg[1]);
-}  
+  }  
 
   ASSERT(dir_pdrop > -1 && dir_pdrop < 5);
     
@@ -116,19 +119,6 @@ int main(int varnum, char** vararg)
   
   grid.setUniqueBoundaryIds(true);
   GridInterfaceEuler<CpGrid> g(grid);
-
-  // Print gridinfo
-  /*
-  cout << "Grid info:\n";
-  for (CI cell = g.cellbegin(); cell != g.cellend(); ++cell) {
-    cout << cell->index() << "\t" << cell->centroid() << endl;
-    int can_pos = 0;
-    for (FI face = cell.facebegin(); face != cell.faceend(); ++face, ++can_pos) {
-      cout << "  " << can_pos << "\t" << g.faceIndex(cell->index(), can_pos) << endl;
-      cout << "    " << face->centroid() << endl;
-    }
-  }
-  */
   
   // Set up Boundary Conditions
   array<FlowBC,6> cond;
@@ -175,16 +165,16 @@ int main(int varnum, char** vararg)
     break;
   }
 
-  BCs fbc_orig;
+  //BCs fbc_orig;
   BCs fbc_mortar;
 
-  createPeriodic(fbc_orig, g, cond);
+  //createPeriodic(fbc_orig, g, cond);
   createPeriodicMortar(fbc_mortar, g, cond);
 
   // Init flow solvers
-  FlowSolverOrig   solver_orig;
+  //FlowSolverOrig   solver_orig;
   FlowSolverMortar solver_mortar;
-  solver_orig.init(g, rockParams, gravity, fbc_orig);
+  //solver_orig.init(g, rockParams, gravity, fbc_orig);
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);
 
   // Print Mortar Matrix
@@ -192,72 +182,71 @@ int main(int varnum, char** vararg)
     solver_mortar.mortar_.printMortarMatrix(0);
     solver_mortar.mortar_.printMortarMatrix(1);
   }
-  
-  /*
-  solver_mortar.mortar_.printFace(1);
-  solver_mortar.mortar_.printFace(2);
-  solver_mortar.mortar_.printFace(3);
-  solver_mortar.mortar_.printFace(4);
-  */
+  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + inputString);
+  writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[1], "L2-" + inputString);
 
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);
 
   // Call solvers
-  solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
-  double maxMod_orig = solver_orig.postProcessFluxes();
-  solver_orig.printStats(std::cout);
-  solver_orig.printSystem("orig");
+  //solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
+  //double maxMod_orig = solver_orig.postProcessFluxes();
+  //solver_orig.printStats(std::cout);
+  //solver_orig.printSystem("orig");
 
   solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
-  //solver_mortar.printStats(std::cout);
-  solver_mortar.printSystem("mortar");
+  if (numCells<126)
+    solver_mortar.printStats(std::cout);
+  solver_mortar.printSystem("mortar-" + inputString);
   
+  cout << scientific;
   double maxIntDiff = solver_mortar.checkFluxPeriodicity();
   double maxMod_mortar = solver_mortar.postProcessFluxes();
   maxIntDiff = solver_mortar.checkFluxPeriodicity();
 
-  FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
+  //FlowSolverOrig::SolutionType soln_orig = solver_orig.getSolution();
   FlowSolverMortar::SolutionType soln_mortar = solver_mortar.getSolution();
   
   // Print solutions
   if (printSoln && numCells < 130) {
-    cout << "\nCell pressure orig and mortar:\n" << scientific << setprecision(3);
+    cout << "\nCell pressure mortar:\n" << scientific << setprecision(3);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
       cout << c->index() 
-	   << '\t' << soln_orig.pressure(c)
+	//<< "\t" << soln_orig.pressure(c)
 	   << "\t" << soln_mortar.pressure(c)
-      	   << "\t" << soln_orig.pressure(c)-soln_mortar.pressure(c) << '\n';
+	//<< "\t" << soln_orig.pressure(c)-soln_mortar.pressure(c) 
+	   << endl;
     }
 
-    cout << "\nOutlux orig and mortar:\n";
+    cout << "\nOutlux mortar:\n";
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
       for (FI f = c.facebegin(); f != c.faceend(); ++f) {
 	cout << f->index()
-	     << "\t" << soln_orig.outflux(f)
+	  //<< "\t" << soln_orig.outflux(f)
 	     << "\t" << soln_mortar.outflux(f)
-	     << "\t" << soln_orig.outflux(f)-soln_mortar.outflux(f) << "\n";
+	  //<< "\t" << soln_orig.outflux(f)-soln_mortar.outflux(f) 
+	     << endl;
       }
     }
 
   }
 
-  vector<GI::Scalar> cellPressureOrig;
+  //vector<GI::Scalar> cellPressureOrig;
   vector<GI::Scalar> cellPressureMortar;
   for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    cellPressureOrig.push_back(soln_orig.pressure(c)/(1.0*Opm::unit::barsa));
+    //cellPressureOrig.push_back(soln_orig.pressure(c)/(1.0*Opm::unit::barsa));
     cellPressureMortar.push_back(soln_mortar.pressure(c)/(1.0*Opm::unit::barsa));
   }
 
   // VTK writer
   if (vtk) {
-    string vtufile_orig   = "orig_output";
+    //string vtufile_orig   = "orig_output";
     string vtufile_mortar = "mortar_output";
-    VTKWriter<CpGrid::LeafGridView> writer_orig(grid.leafView());
+    //VTKWriter<CpGrid::LeafGridView> writer_orig(grid.leafView());
     VTKWriter<CpGrid::LeafGridView> writer_mortar(grid.leafView());
-    writer_orig.addCellData(cellPressureOrig, "cellPressure");
+    //writer_orig.addCellData(cellPressureOrig, "cellPressure");
     writer_mortar.addCellData(cellPressureMortar, "cellPressure");
-    writer_orig.write(vtufile_orig);
+    //writer_orig.write(vtufile_orig);
     writer_mortar.write(vtufile_mortar);
   }
 
