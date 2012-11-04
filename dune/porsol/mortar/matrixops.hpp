@@ -122,15 +122,15 @@ Matrix MatrixOps::Axpy(const Matrix& A, const Matrix& B, double alpha)
 Matrix MatrixOps::augment(const Matrix& A, const Matrix& B,
                      size_t r0, size_t c0, bool symmetric)
 {
-  std::cout << "Augmenting matrix of dimension " << A.N() << "x" << A.M()
-            << " with matrix of dimension " << B.N() << "x" << B.M() << std::endl;
+  // std::cout << "Augmenting matrix of dimension " << A.N() << "x" << A.M()
+  //          << " with matrix of dimension " << B.N() << "x" << B.M() << std::endl;
   size_t nrow = A.N();
   size_t ncol = A.M();
   if (r0+B.N() > nrow) nrow = r0+B.N();
   if (symmetric && r0+B.N() > ncol) ncol = r0+B.N();
   if (c0+B.M() > ncol) ncol = c0+B.M();
   if (symmetric && c0+B.M() > nrow) nrow = c0+B.M();
-  std::cout << "Resulting size: " << nrow << "x" << ncol << std::endl;
+  // std::cout << "Resulting size: " << nrow << "x" << ncol << std::endl;
 
   AdjacencyPattern adj;
   adj.resize(nrow);
