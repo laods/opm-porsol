@@ -1351,18 +1351,6 @@ namespace Dune {
             typedef BlockVector<VectorBlockType>        Vector;
             typedef MatrixAdapter<Matrix,Vector,Vector> Adapter;
 
-	    std::cout << "rhs orig before CG:\n" << std::scientific;
-	    for (int i=0; i<rhs_.size(); ++i) {
-	      std::cout << i << ": " << rhs_[i] << std::endl; 
-	    }
-
-	    std::string rhsfile("orig-beforeCG-rhs.dat");
-	    std::ofstream rhs(rhsfile.c_str());
-	    rhs.precision(15);
-	    rhs.setf(std::ios::scientific | std::ios::showpos);
-	    std::copy(rhs_.begin(), rhs_.end(),
-		      std::ostream_iterator<VectorBlockType>(rhs, "\n"));
-
             // Regularize the matrix (only for pure Neumann problems...)
             if (do_regularization_) {
                 S_[0][0] *= 2;
@@ -1386,28 +1374,6 @@ namespace Dune {
                 THROW("Linear solver failed to converge in " << result.iterations << " iterations.\n"
                       << "Residual reduction achieved is " << result.reduction << '\n');
             }
-
-	    std::cout << "S orig:\n" << std::scientific;
-	    for (int i=0; i<10; ++i) {
-	      for (int j=0; j<10; ++j) {
-		if (S_.exists(i,j)) 
-		  std::cout << S_[i][j];
-		else
-		  std::cout << 0.0;
-		std::cout << " ";
-	      }
-	      std::cout << std::endl;
-	    }
-
-	    std::cout << "rhs orig:\n";
-	    for (int i=0; i<rhs_.size(); ++i) {
-	      std::cout << i << ": " << rhs_[i] << std::endl; 
-	    }
-
-	    std::cout << "Face pressures orig:\n";
-	    for (int i=0; i<soln_.size(); ++i) {
-	      std::cout << i << ": " << soln_[i] << std::endl; 
-	    } 
         }
 
 
@@ -1652,23 +1618,10 @@ namespace Dune {
         {
             typedef typename L2G::const_iterator it;
 
-	    bool print = false;
-	    if (l2g[0] == 49) { // if in cell 23
-	      print = true;
-	      std::cout << "In cell 23:\n" << std::scientific;
-	    }
-
             int r = 0;
             for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
                 // Indirection for periodic BC handling.
                 int ii = *i;
-
-		if (print) {
-		  std::cout << "r=" << r << ", ii=" << ii << std::endl
-			    << "  facetype[r]=" << facetype[r]
-			    << ", condval[r]=" << condval[r]
-			    << ", ppartner[r]=" << ppartner[r] << std::endl;
-		}
 
                 switch (facetype[r]) {
                 case Dirichlet:
@@ -1698,9 +1651,6 @@ namespace Dune {
                     {
                         const double a = S(r,r), b = a * condval[r];
 
-			if (print)
-			  std::cout << "  a=" << S(r,r) << ", b=" << b << std::endl;
-
                         // Equation (1)
                         S_  [         ii][         ii] += a;
                         S_  [         ii][ppartner[r]] -= a;
@@ -1718,22 +1668,10 @@ namespace Dune {
                     // IOW: Don't insert <break;> here!
                     //
                 default:
-
-		  if(print)
-		    std::cout << "    In default:\n";
-
-		  int c = 0;
+                    int c = 0;
                     for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
                         // Indirection for periodic BC handling.
                         int jj = *j;
-
-			if (print) {
-			  std::cout << "    c=" << c << ", jj=" << jj << std::endl
-				    << "    facetype[c]=" << facetype[c]
-				    << ", condval[c]=" << condval[c]
-				    << ", ppartner[c]=" << ppartner[c] 
-				    << ", S(r,c)=" << S(r,c) << std::endl;
-			}
 
                         if (facetype[c] == Dirichlet) {
                             rhs_[ii] -= S(r,c) * condval[c];
