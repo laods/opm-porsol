@@ -20,7 +20,8 @@ spe10_test					\
 spu_2p						\
 tpfa_compressible_solver_test			\
 tpfa_solver_test				\
-mortar_mimetic_periodic_test_larso
+mortar_mimetic_periodic_test_larso		\
+mortar_mimetic_uniform_test	
 #				\
 #twophase2_test
 
@@ -69,6 +70,8 @@ blackoil_sim_test_SOURCES = blackoil_sim_test.cpp
 blackoil_sim_test_LDADD = $(LDADD) ../lib/libopmporsol.la
 
 mortar_mimetic_periodic_test_larso_SOURCES = mortar_mimetic_periodic_test_larso.cpp
+
+mortar_mimetic_uniform_test_SOURCES = mortar_mimetic_uniform_test.cpp
 
 #twophase2_test_SOURCES = twophase2_test.cpp
 #twophase2_test_LDADD = $(LDADD) ../lib/libopmporsol.la
