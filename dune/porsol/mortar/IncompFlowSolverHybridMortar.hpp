@@ -1447,9 +1447,9 @@ namespace Dune {
       ASSERT(L.size() == 2);
       Matrix A(S_);
       int c = S_.M();
-      double frobNorm = S_.frobenius_norm(); // For scaling
+      double scalingFactor = (S_.infinity_norm()) / L[0].infinity_norm());
       for (int i=0; i<L.size(); ++i) { 
-	L[i] *= frobNorm;
+	L[i] *= scalingFactor;
 	A = MatrixOps::augment(A, L[i], 0, c, true);
 	c += L[i].M();
       }
