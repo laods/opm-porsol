@@ -118,7 +118,8 @@ int main(int varnum, char** vararg)
   FlowSolverOrig   solver_orig;
   FlowSolverMortar solver_mortar;
   solver_orig.init(g, rockParams, gravity, fbc_orig);
-  solver_orig.printStats(std::cout);
+  if (numCells<126) 
+    solver_orig.printStats(std::cout);
   cout << endl;
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);  
 
