@@ -809,9 +809,17 @@ namespace Dune {
       }
       
       std::vector<double> diff;
-      diff.push_back(std::abs(fluxIntegral[0] + fluxIntegral[1]));
+      diff.push_back(std::abs(fluxIntegral[0] + fluxIntegral[1])); // -- -> +
       diff.push_back(std::abs(fluxIntegral[2] + fluxIntegral[3]));
       diff.push_back(std::abs(fluxIntegral[4] + fluxIntegral[5]));
+
+      std::cout << std::setprecision(10) << std::endl;
+      std::cout << "Flux integral LEFT:   " << fluxIntegral[0] << std::endl;
+      std::cout << "Flux integral RIGHT:  " << fluxIntegral[1] << std::endl;
+      std::cout << "Flux integral FRONT:  " << fluxIntegral[2] << std::endl;
+      std::cout << "Flux integral BACK:   " << fluxIntegral[3] << std::endl;
+      std::cout << "Flux integral BOTTOM: " << fluxIntegral[4] << std::endl;
+      std::cout << "Flux integral TOP:    " << fluxIntegral[5] << std::endl;
 
       std::cout << "Flux integrals in x direction differ by " 
 		<< diff[0] << std::endl;
@@ -819,6 +827,8 @@ namespace Dune {
 		<< diff[1] << std::endl;
       std::cout << "Flux integrals in z direction differ by " 
 		<< diff[2] << std::endl;
+      std::cout << std::setprecision(3);
+
 
       return *(std::max_element(diff.begin(), diff.end()));
     }
