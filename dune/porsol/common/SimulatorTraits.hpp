@@ -41,6 +41,7 @@
 #include <dune/porsol/common/ReservoirPropertyCapillary.hpp>
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/porsol/mortar/IncompFlowSolverHybridMortar.hpp>
 #include <dune/porsol/euler/EulerUpstream.hpp>
 //#include <dune/porsol/euler/EulerUpstreamImplicit.hpp>
 #include <dune/porsol/euler/ImplicitCapillarity.hpp>
@@ -146,6 +147,22 @@ namespace Dune
                                            typename RelpermPolicy::template ResProp<GridInterface::Dimension>::Type,
                                            BoundaryConditions,
                                            RelpermPolicy::template InnerProduct> Type;
+        };
+    };
+
+    /// Combines the component traits into a single, parametrized type.
+    /// This traits is for a mortar MFDM method (added by Lars Odsæter)
+    template <class RelpermPolicy, template <class> class TransportPolicy>
+    struct SimulatorTraitsMortar : public RelpermPolicy, TransportPolicy<RelpermPolicy>
+    {
+        /// The pressure/flow solver type.
+        template <class GridInterface, class BoundaryConditions>
+        struct FlowSolver
+        {
+            typedef IncompFlowSolverHybridMortar<GridInterface,
+						 typename RelpermPolicy::template ResProp<GridInterface::Dimension>::Type,
+						 BoundaryConditions,
+						 RelpermPolicy::template InnerProduct> Type;
         };
     };
 
