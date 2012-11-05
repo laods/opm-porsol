@@ -920,6 +920,15 @@ namespace Dune {
 		std::ostream_iterator<VectorBlockType>(rhs, "\n"));
     }
 
+    std::vector<double> getContactPressureSoln() 
+    {
+      std::vector<double> result;
+      for (int i=0; i<soln_.size(); ++i) {
+	result.push_back(soln_[i]);
+      }
+      return result;
+    }
+    
   private:
     typedef std::pair<int,int>                 DofID;
     typedef std::tr1::unordered_map<int,DofID> BdryIdMapType;
@@ -965,7 +974,7 @@ namespace Dune {
     
     // Make this public for easy debugging
     // TODO: Set this member private
-    MortarHelper<GridInterface> mortar_;
+    MortarHelper<GridInterface> mortar_;   
 
   private:
 
