@@ -76,7 +76,9 @@ int main(int varnum, char** vararg)
       else {
 	cout << "Gridsze set to " << gridsize << endl;
       }
-      dims = {{gridsize, gridsize, gridsize}};
+      dims[0] = gridsize;
+      dims[1] = gridsize;
+      dims[2] = gridsize;
     }
     array<double,3> cellsize = {{1, 1, 1}};
     grid.createCartesian(dims, cellsize);
