@@ -85,9 +85,31 @@ int main(int varnum, char** vararg)
     double uniformPORO = 0.2;
     double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
     rockParams.init(grid.size(0), uniformPORO, uniformPERM);
+    
+    // Multiply perm by 2 in every second layer 
+    for (int zlayer=1; zlayer<dims[2]; zlayer=zlayer+2) {
+      int cell_idx = zlayer*dims[0]*dims[1];
+      for (int i=0; i<dims[0]*dims[1]; ++i) {
+        rockParams.permeabilityModifiable(cell_idx) *= 2;
+	++cell_idx;
+      }
+    }
   }
       
   int numCells = grid.size(0);
+
+  // Print permeability field
+  for (int ci=0; ci<numCells; ++ci) {
+    cout << endl << "Permeability cell " << ci << ":" << endl;
+    ReservoirPropertyCapillary<dim>::PermTensor cellPerm = rockParams.permeability(ci);
+    for (int r=0; r<cellPerm.numRows(); ++r) {
+      cout << "\t";
+      for (int c=0; c<cellPerm.numCols(); ++c) {
+	cout << cellPerm(r,c) << " ";
+      }
+      cout << endl;
+    }
+  } 
 
   // Gravity and source/sat
   CI::Vector gravity;
@@ -164,6 +186,28 @@ int main(int varnum, char** vararg)
 	     << "\t" << soln_mortar.pressure(c)
 	     << "\t" << soln_orig.pressure(c)-soln_mortar.pressure(c) << '\n';
       }
+      cout << "\nOutlux orig and mortar:\n";
+      for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+	for (FI f = c.facebegin(); f != c.faceend(); ++f) {
+	  cout << f->index()
+	       << "\t" << soln_orig.outflux(f)
+	       << "\t" << soln_mortar.outflux(f)
+	       << "\t" << soln_orig.outflux(f)-soln_mortar.outflux(f) << "\n";
+	}
+      }
+      
+      vector<double> pi_orig = solver_orig.getContactPressureSoln();
+      vector<double> pi_mortar = solver_mortar.getContactPressureSoln();
+      cout << "\nContact pressures orig and mortar:\n";
+      cout << pi_orig.size() << " " << pi_mortar.size() << endl;
+      for (int i=0; i<pi_orig.size(); ++i) {
+	cout << i
+	     << "\t" << pi_orig[i]
+	     << "\t" << pi_mortar[i]
+	     << "\t" << pi_orig[i]-pi_mortar[i] << endl;
+      }
+
+      
     }
 
     solver_orig.printSystem("orig-" + dimString + pdropString[dir_pdrop]);
