@@ -148,7 +148,9 @@ int main(int varnum, char** vararg)
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);  
 
   // Write mortar matrices to matlab
-  string dimString = "uniform" + to_string(gridsize) + "x" + to_string(gridsize) + "x" + to_string(gridsize) + "grid";
+  string dimString = "uniform" + to_string(static_cast<long long>(gridsize)) + "x" + 
+    to_string(static_cast<long long>(gridsize)) + "x" + 
+    to_string(static_cast<long long>(gridsize)) + "grid";
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + dimString + ".dat");
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L2-" + dimString + ".dat");
 
