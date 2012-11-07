@@ -648,6 +648,14 @@ namespace Dune {
 //             static int count = 0;
 //             ++count;
 //             printSystem(std::string("linsys_mimetic-") + boost::lexical_cast<std::string>(count));
+
+	    std::cout << std::endl 
+		      << "Number of contact pressure unknowns: " 
+		      << total_num_faces_ << std::endl
+		      << "Number of flux unknowns:             " 
+		      << total_num_faces_ + num_internal_faces_
+		      << std::endl;
+
             switch (linsolver_type) {
             case 0: // ILU0 preconditioned BiCGStab
                 solveLinearSystem(residual_tolerance, linsolver_verbosity);
