@@ -655,6 +655,11 @@ namespace Dune {
 		      << "Number of flux unknowns:             " 
 		      << total_num_faces_ + num_internal_faces_
 		      << std::endl;
+            
+	    static int count = 0;
+	    writeMatrixToMatlab(S_, "system-matrix_pdd-" 
+				       + boost::lexical_cast<std::string>(count) + ".dat");
+	    ++count;
 
             switch (linsolver_type) {
             case 0: // ILU0 preconditioned BiCGStab
