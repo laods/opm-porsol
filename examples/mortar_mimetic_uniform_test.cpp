@@ -53,7 +53,7 @@ int main(int varnum, char** vararg)
   double ztol = 1e-8;
   const int dim = 3; 
   bool printSoln = true;
-  bool vtk = false;
+  bool vtk = true;
   int dir_pdrop = 0;
   int gridsize = 3;  
 
@@ -74,42 +74,33 @@ int main(int varnum, char** vararg)
 	gridsize = 3;
       }
       else {
-	cout << "Gridsze set to " << gridsize << endl;
+	cout << "Gridsize set to " << gridsize << endl;
       }
       dims[0] = gridsize;
       dims[1] = gridsize;
       dims[2] = gridsize;
     }
-    array<double,3> cellsize = {{1, 1, 1}};
+    array<double,3> cellsize = {{1.0/gridsize, 1.0/gridsize, 1.0/gridsize}};
     grid.createCartesian(dims, cellsize);
     double uniformPORO = 0.2;
-    double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
+    //double uniformPERM = 100.0 *Opm::prefix::milli *Opm::unit::darcy;
+    double uniformPERM = 1.0; 
     rockParams.init(grid.size(0), uniformPORO, uniformPERM);
     
-    // Multiply perm by 2 in every second layer 
-    for (int zlayer=1; zlayer<dims[2]; zlayer=zlayer+2) {
+    for (int zlayer=0; zlayer<dims[2]; ++zlayer) {
+      cout << double(zlayer+1)/gridsize << endl;
+      if (double(zlayer+1)/gridsize<0.26 || double(zlayer+1)/gridsize>0.76)
+	continue;
       int cell_idx = zlayer*dims[0]*dims[1];
       for (int i=0; i<dims[0]*dims[1]; ++i) {
-        rockParams.permeabilityModifiable(cell_idx) *= 2;
+        rockParams.permeabilityModifiable(cell_idx) *= 10;
 	++cell_idx;
       }
     }
+   
   }
       
   int numCells = grid.size(0);
-
-  // Print permeability field
-  for (int ci=0; ci<numCells; ++ci) {
-    cout << endl << "Permeability cell " << ci << ":" << endl;
-    ReservoirPropertyCapillary<dim>::PermTensor cellPerm = rockParams.permeability(ci);
-    for (int r=0; r<cellPerm.numRows(); ++r) {
-      cout << "\t";
-      for (int c=0; c<cellPerm.numCols(); ++c) {
-	cout << cellPerm(r,c) << " ";
-      }
-      cout << endl;
-    }
-  } 
 
   // Gravity and source/sat
   CI::Vector gravity;
@@ -154,6 +145,10 @@ int main(int varnum, char** vararg)
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L1-" + dimString + ".dat");
   writeMatrixToMatlab(solver_mortar.mortar_.getMortarMatrices()[0], "L2-" + dimString + ".dat");
 
+  vector<vector<GI::Scalar> > cellPressureOrig;
+  vector<vector<GI::Scalar> > cellPressureMortar;
+  vector<vector<GI::Scalar> > cellVelocity;
+
   // For each direction
   for (int dir_pdrop=0; dir_pdrop<3; ++dir_pdrop) {
 
@@ -169,9 +164,8 @@ int main(int varnum, char** vararg)
     }
 
     // Call solvers
-    solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
-    
-    solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
+    solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-14, 1, 0);
+    solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-14, 1, 0);
     cout << "Flux integrals mortar:\n";
     double maxIntDiff_mortar = solver_mortar.checkFluxPeriodicity();
     double maxMod_mortar = solver_mortar.postProcessFluxes();
@@ -218,6 +212,41 @@ int main(int varnum, char** vararg)
     solver_orig.printSystem("orig-" + dimString + pdropString[dir_pdrop]);
     solver_mortar.printSystem("mortar-" + dimString + pdropString[dir_pdrop]);
 
+    if (vtk) {
+      vector<GI::Scalar> temp;
+      cellPressureOrig.push_back(temp);
+      cellPressureMortar.push_back(temp);
+      cellVelocity.push_back(temp);
+      for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+	cellPressureOrig.back().push_back(soln_orig.pressure(c)/(1.0*Opm::unit::barsa) 
+					  + 1.0 - 1.0/gridsize);
+	cellPressureMortar.back().push_back(soln_mortar.pressure(c)/(1.0*Opm::unit::barsa)
+					    + 1.0 - 1.0/gridsize);
+	GI::Vector velocity(0.0);
+	
+	double totalWeight = 0.0;
+	for (FI f = c.facebegin(); f != c.faceend(); ++f) {
+	  GI::Vector diff = c.centroid() - f.centroid();
+	  totalWeight += diff.two_norm();
+	}
+
+	for (FI f = c.facebegin(); f != c.faceend(); ++f) {
+	  GI::Vector diff = c.centroid() - f.centroid();
+	  //double weight = 1/(diff.two_norm());
+	  // The original weights don't work as intended. 
+	  double weight = 0.5; 
+	  GI::Vector faceContrib = f.normal();
+	  faceContrib *= weight*soln_mortar.outflux(f);
+	  velocity += faceContrib;
+	}
+	cellVelocity.back().push_back(velocity[0]);
+	cellVelocity.back().push_back(velocity[1]);
+	cellVelocity.back().push_back(velocity[2]);
+
+      }
+
+    }
+
     cout << endl << endl;
 
     // Update BCs to next iteration
@@ -263,26 +292,27 @@ int main(int varnum, char** vararg)
   }
   */
 
-  /*
-  vector<GI::Scalar> cellPressureOrig;
-  vector<GI::Scalar> cellPressureMortar;
+  vector<GI::Scalar> permField(numCells, 0.0);
   for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-    cellPressureOrig.push_back(soln_orig.pressure(c)/(1.0*Opm::unit::barsa));
-    cellPressureMortar.push_back(soln_mortar.pressure(c)/(1.0*Opm::unit::barsa));
+    int c_idx = c.index();
+    permField[c_idx] = rockParams.permeability(c_idx)(0,0);
   }
 
-  // VTK writer
   if (vtk) {
-    string vtufile_orig   = "orig_output";
-    string vtufile_mortar = "mortar_output";
-    VTKWriter<CpGrid::LeafGridView> writer_orig(grid.leafView());
-    VTKWriter<CpGrid::LeafGridView> writer_mortar(grid.leafView());
-    writer_orig.addCellData(cellPressureOrig, "cellPressure");
-    writer_mortar.addCellData(cellPressureMortar, "cellPressure");
-    writer_orig.write(vtufile_orig);
-    writer_mortar.write(vtufile_mortar);
+    string vtufile = "solution_" + dimString;
+    VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
+    vtkwriter.addCellData(permField, "permeability");
+    vtkwriter.addCellData(cellPressureOrig[0], "cellPressureOrig-pdd0");
+    vtkwriter.addCellData(cellPressureOrig[1], "cellPressureOrig-pdd1");
+    vtkwriter.addCellData(cellPressureOrig[2], "cellPressureOrig-pdd2");
+    vtkwriter.addCellData(cellPressureMortar[0], "cellPressureMortar-pdd0");
+    vtkwriter.addCellData(cellPressureMortar[1], "cellPressureMortar-pdd1");
+    vtkwriter.addCellData(cellPressureMortar[2], "cellPressureMortar-pdd2");
+    vtkwriter.addCellData(cellVelocity[0], "cellVelocityMortar-pdd0", 3);
+    vtkwriter.addCellData(cellVelocity[1], "cellVelocityMortar-pdd1", 3);
+    vtkwriter.addCellData(cellVelocity[2], "cellVelocityMortar-pdd2", 3);
+    vtkwriter.write(vtufile);
   }
-  */
 
 
   return 0;
