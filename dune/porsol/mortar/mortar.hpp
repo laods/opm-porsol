@@ -67,8 +67,10 @@ public:
   typedef typename LeafGridView::template Codim<1>::Geometry::GlobalCoordinate GlobalCoordinate;
   typedef typename LeafGridView::template Codim<1>::Geometry::LocalCoordinate LocalCoordinate;
 
+  // Default constructor
   MortarHelper() {};
 
+  // Constructor 1
   MortarHelper(const GridInterface& grid)
     : pgrid_(&grid) 
   {
@@ -79,6 +81,7 @@ public:
     dco_ = true;
   };
 
+  // Constructor 2
   MortarHelper(const GridInterface& grid, int nEqns, Opm::SparseTable<int> cellFaces)
     : pgrid_(&grid), nEqns_(nEqns), cellFaces_(cellFaces)
   {
@@ -88,6 +91,7 @@ public:
     dco_ = true;
   };
 
+  // Constructor 3
   MortarHelper(const GridInterface& grid, std::vector<ctype> min,
 	       std::vector<ctype> max, int n1, int n2_, int nEqns, 
 	       Opm::SparseTable<int> cellFaces,
@@ -95,6 +99,7 @@ public:
     : pgrid_(&grid), min_(min), max_(max), n1_(n1), n2_(n2), 
       nEqns_(nEqns), cellFaces_(cellFaces), tol_(tol), dco_(dco) {};
 
+  // Initializer 1. Used in addition to default contructor.
   void init(const GridInterface& grid) 
   {
     pgrid_ = &grid;
@@ -105,6 +110,7 @@ public:
     dco_ = true;
   }
 
+  // Initializer 2. Used in addition to default contructor.
   void init(const GridInterface& grid, int nEqns) 
   {
     pgrid_ = &grid;
@@ -115,6 +121,7 @@ public:
     dco_ = true;
   }
 
+  // Initializer 3. Used in addition to default contructor.
   void init(const GridInterface& grid, int nEqns, Opm::SparseTable<int> cellFaces) 
   {
     pgrid_ = &grid;
@@ -126,6 +133,7 @@ public:
     dco_ = true;
   }
   
+  // Initializer 4. Used in addition to default contructor.
   void init(const GridInterface& grid, std::vector<ctype> min,
 	    std::vector<ctype> max, int n1, int n2_, int nEqns, 
 	    Opm::SparseTable<int> cellFaces,
@@ -140,6 +148,7 @@ public:
     dco_ = dco;
   }
 
+  // Clear member variables
   void clear()
   {
     n1_ = n2_ = 0;
@@ -155,15 +164,20 @@ public:
     rhs.clear();
   }
 
+  // Calculate minimum coordinate of grid
   std::vector<double> min() {
     return min_;
   }
+
+  // Calculate maximum coordinate of grid
   std::vector<double> max() {
     return max_;
   }
+
+  // Set and get functions
   int n1() {
     return n1_;
-  }
+  } 
   int n2() {
     return n2_;
   }
@@ -175,6 +189,13 @@ public:
     n1_ = n1;
     n2_ = n2;
   }
+  const std::vector<Matrix> getMortarMatrices() {
+    return L;
+  }
+  const Vector getRhs(int dir) {
+    return rhs[dir];
+  }
+
   void findMinMax();
   void find_n();
   
@@ -182,53 +203,60 @@ public:
   // Print vertices on face quads with global index and coord
   void printFace(int face);
 
+  // Print mortar matrix in direction dir
   void printMortarMatrix(int dir);
 
+  // Calculate mortar matrices
   void periodicBCsMortar();
 
-  const std::vector<Matrix> getMortarMatrices() {
-    return L;
-  }
-
-  const Vector getRhs(int dir) {
-    return rhs[dir];
-  }
-
 private:
-  std::vector<double> min_;
-  std::vector<double> max_;
-  int n1_;
-  int n2_;
+  std::vector<double> min_; // minimum coordinate of grid
+  std::vector<double> max_; // maximum coordinate of grid
+  int n1_; // Number of discretization cells in x-dir
+  int n2_; // Number of discretization cells in y-dir
   const GridInterface* pgrid_;
-  int nEqns_;
+  int nEqns_; // Number of equations in system
   bool dco_; // Dune convention ordering of vertices in quad
   Opm::SparseTable<int> cellFaces_;
-  double tol_;
+  double tol_; // Tolerance to decide if point is on line for instance
 
   enum SIDE {
     LEFT,
     RIGHT
   };
+
   enum Direction { NONE = 0, X = 1, Y = 2, Z = 4,
                      XY = 1+2, XZ = 1+4, YZ = 2+4, 
                     XYZ = 1+2+4 };
 
-  std::vector<BoundaryGrid> master;
-  std::vector< std::vector<BoundaryGrid::Vertex> > slave;
-  std::vector<Matrix> L;
-  std::vector<Vector> rhs;
+  std::vector<BoundaryGrid> master; // Master grids
+  std::vector< std::vector<BoundaryGrid::Vertex> > slave; // Slave grids
+  std::vector<Matrix> L; // Mortar matrices
+  std::vector<Vector> rhs; // Right hand sides
 
+  // Extract vertices on boundary face 
   std::vector<BoundaryGrid::Vertex> extractFace(Direction dir, ctype coord);
+
+  // Extract boundary grid on master face in direction dir
   BoundaryGrid extractMasterFace(Direction dir, ctype coord, SIDE side=LEFT, bool dc=false);
+  
+  // Check if coord is on plane
   bool isOnPlane(Direction plane, GlobalCoordinate coord, ctype value);
+
+  // Check if coord is on line
   bool isOnLine(Direction dir, GlobalCoordinate coord, ctype x, ctype y);
+
+  // Check is coord is on point
   bool isOnPoint(GlobalCoordinate coord, GlobalCoordinate point);
 
+  // Calculate mortar matrix in direction dir
   Matrix findLMatrixMortar(const BoundaryGrid& b1, const BoundaryGrid& interface, int dir);
 
+  // Returns equation number for a given quad
   int getEquationForDof(const BoundaryGrid::Quad& quad);
   int getEquationForDof(const BoundaryGrid::Quad& quad, int dir);
 
+  // Calculates centroid of quad defined by four vertices
   GlobalCoordinate centroid(std::vector<GlobalCoordinate> vertices, int dir);
 
 }; // MortarHelper
