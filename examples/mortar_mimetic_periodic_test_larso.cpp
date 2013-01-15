@@ -1,4 +1,38 @@
-// This code is for testing Mortar Mimetic FDM
+//===========================================================================
+//
+// File: mortar_mimetic_periodic_test_larso.cpp
+//
+// Author(s): Lars Vingli Odsæter <lars.odsater@gmail.com>
+//
+// $Date$
+//
+// $Revision$
+//
+//===========================================================================
+
+/*
+  This file is part of The Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+  Tests the mortar approach implemented in dune/porsol/mortar/mortar.hpp
+  Input variables:
+    1) Pressure drop direction (0,1 or 2)
+    2) grdecl-file
+*/
 
 #include "config.h"
 
@@ -119,7 +153,7 @@ int main(int varnum, char** vararg)
   
   grid.setUniqueBoundaryIds(true);
   GridInterfaceEuler<CpGrid> g(grid);
-  
+
   // Set up Boundary Conditions
   array<FlowBC,6> cond;
   switch (dir_pdrop) {
@@ -165,16 +199,11 @@ int main(int varnum, char** vararg)
     break;
   }
 
-  //BCs fbc_orig;
   BCs fbc_mortar;
-
-  //createPeriodic(fbc_orig, g, cond);
   createPeriodicMortar(fbc_mortar, g, cond);
 
-  // Init flow solvers
-  //FlowSolverOrig   solver_orig;
+  // Init flow solver
   FlowSolverMortar solver_mortar;
-  //solver_orig.init(g, rockParams, gravity, fbc_orig);
   solver_mortar.init(g, rockParams, gravity, fbc_mortar);
 
   // Print Mortar Matrix
@@ -188,12 +217,7 @@ int main(int varnum, char** vararg)
   vector<double> src(numCells, 0.0);
   vector<double> sat(numCells, 0.0);
 
-  // Call solvers
-  //solver_orig.solve(rockParams, sat, fbc_orig, src, 1e-8, 1, 0);
-  //double maxMod_orig = solver_orig.postProcessFluxes();
-  //solver_orig.printStats(std::cout);
-  //solver_orig.printSystem("orig");
-
+  // Call solver
   solver_mortar.solve(rockParams, sat, fbc_mortar, src, 1e-8, 1, 0);
   if (numCells<126)
     solver_mortar.printStats(std::cout);
@@ -249,26 +273,6 @@ int main(int varnum, char** vararg)
     //writer_orig.write(vtufile_orig);
     writer_mortar.write(vtufile_mortar);
   }
-
-  cout << "dir_pdrop: " << dir_pdrop << endl;
-
-  // Play with PNShapeFunctionSet
-  /*
-  Dune::FieldVector<double,2> local(0.0);
-  PNShapeFunctionSet<2> lbasis(2,2);
-  for (int f=0; f<lbasis.size(); ++f) {
-    cout << "Shapefunction " << f << ":\n" << fixed;
-    for (int i=10; i>-1; --i) {
-      local[0] = i/10.0;
-      for (int j=0; j<11; ++j) {
-	local[1] = j/10.0;
-	cout << lbasis[f].evaluateFunction(local) << " ";
-      }
-      cout << endl;
-    } 
-  }
-  */
-
 
   return 0;
 }
