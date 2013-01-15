@@ -54,6 +54,9 @@
 #include <dune/porsol/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+
+
 using namespace Dune;
 
 int main(int argc, char** argv)
@@ -66,6 +69,8 @@ int main(int argc, char** argv)
     typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs,
                                          Dune::MimeticIPEvaluator> FlowSolver;
 
+    bool vtk = true;
+
     Opm::parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);
@@ -76,8 +81,8 @@ int main(int argc, char** argv)
                             FBC(FBC::Periodic, -1.0*Opm::unit::barsa),
                             FBC(FBC::Periodic,  0.0),
                             FBC(FBC::Periodic,  0.0),
-                            FBC(FBC::Neumann,   0.0),
-                            FBC(FBC::Neumann,   0.0) }};
+                            FBC(FBC::Periodic,  0.0),
+                            FBC(FBC::Periodic,  0.0) }};
     BCs fbc;
     createPeriodic(fbc, g, cond);
 
@@ -96,9 +101,9 @@ int main(int argc, char** argv)
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
 
-    solver.solve(r, sat, fbc, src);
+    solver.solve(r, sat, fbc, src, 1e-8, 1, 0);
 
-#if 0
+#if 1
     FlowSolver::SolutionType soln = solver.getSolution();
     std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
@@ -115,7 +120,20 @@ int main(int argc, char** argv)
     }
     std::cout << "]\n";
 #endif
-    
+  
+    std::vector<GI::Scalar> cellPressureOrig;
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+      cellPressureOrig.push_back(soln.pressure(c)/(1.0*Opm::unit::barsa));
+    }
+
+    // VTK writer
+    if (vtk) {
+      std::string vtufile_orig  = "orig_output";
+      VTKWriter<CpGrid::LeafGridView> writer_orig(grid.leafView());
+      writer_orig.addCellData(cellPressureOrig, "cellPressure");
+      writer_orig.write(vtufile_orig);
+    }
+  
     return 0;
 }
 
