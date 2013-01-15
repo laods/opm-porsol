@@ -1,7 +1,35 @@
+//===========================================================================
+//
+// File: mortar.cpp
+//
+// Author(s): Lars Vingli Odsæter <lars.odsater@gmail.com>
+//
+// $Date$
+//
+// $Revision$
+//
+//===========================================================================
+
+/*
+  This file is part of The Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 
 #ifndef MORTAR_HPP
 #define MORTAR_HPP
-
 
 #include <vector>
 
@@ -234,7 +262,7 @@ void MortarHelper<GridInterface>::find_n() {
 
 template<class GridInterface>
 std::vector<BoundaryGrid::Vertex> MortarHelper<GridInterface>::extractFace(Direction dir, ctype coord) {
-  // Based on ElasticityUpscale::extractFaces
+  // Based on ElasticityUpscale::extractFaces()
   GridType gv =  pgrid_->grid();
   std::vector<BoundaryGrid::Vertex> result;
   const LeafIndexSet& set = gv.leafView().indexSet();
@@ -263,7 +291,7 @@ BoundaryGrid MortarHelper<GridInterface>::extractMasterFace(Direction dir,
 						       SIDE side,
 						       bool dc) 
 {
-  // Based on ElasticityUpscale::extractMasterFace
+  // Based on ElasticityUpscale::extractMasterFace()
   GridType gv =  pgrid_->grid();
 
   static const int V1[3][4] = {{0,2,4,6},
@@ -491,14 +519,6 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
   for (size_t p=0;p<interface.size();++p) {
     for (size_t q=0;q<per_pillar;++q) {
       for (size_t i=0;i<1;++i) {
-        //for (size_t d=0;d<3;++d) { // We only have one DOF per vertex
-	//MPC* mpc = A.getMPC(b1[p*per_pillar+q].v[i].i,d);
-
-	// A given DOF here is never a MPC since the DOF is at face centers, not vertices!
-	// Check for MPC not nescessary (as it is in elasticity upscale)
-	
-	// Own code:
-	//const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
 	const BoundaryGrid::Quad& qu(b1[p+per_pillar*q]);
 	int dof;
 	if (cellFaces_.empty()) 
@@ -507,41 +527,17 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	  dof = getEquationForDof(qu);
 	for (int j=0;j<4;++j) {
 	  adj[dof].insert(interface[p].v[j].i);
-	  //adj[dof].insert(p*4+j);
-	  // No need for multiplying with 3 (only one DOF per vertex)
 	}
-	  
-	// Original implementation from elasticity:
-	/*
-          if (mpc) {
-            for (int n=0;n<mpc->getNoMaster();++n) {
-              int dof = A.getEquationForDof(mpc->getMaster(n).node,d);
-              if (dof > -1) {
-                for (int j=0;j<4;++j)
-                  adj[dof].insert(3*interface[p].v[j].i+d);
-              }
-            }
-          } else {
-            int dof = A.getEquationForDof(b1[p*per_pillar+q].v[i].i,d);
-            if (dof > -1) {
-              for (int j=0;j<4;++j)
-                adj[dof].insert(3*interface[p].v[j].i+d);
-            }
-          }
-	*/
-	//}
       }
     }
   }
 
   Matrix B;
   MatrixOps::fromAdjacency(B,adj,nEqns_,interface.totalNodes());
-  //MatrixOps::fromAdjacency(B,adj,nEqns_,interface.size()*4);
 
   // get a set of P0 shape functions for the face pressures
   P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
   // get a set of PN shape functions for multipliers
-  //PNShapeFunctionSet<2> lbasis(2,2);
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
   // get a reference element
   Dune::GeometryType gt;
@@ -558,7 +554,6 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
     const BoundaryGrid::Quad& qi(interface[p]);
     HexGeometry<2,2,GridInterface> lg(qi);
     for (size_t q=0;q<per_pillar;++q) {
-      //const BoundaryGrid::Quad& qu(b1[p*per_pillar+q]);
       const BoundaryGrid::Quad& qu(b1[p+per_pillar*q]);
       HexGeometry<2,2,GridType> hex(qu,pgrid_->grid(),dir);
       Dune::FieldMatrix<ctype,1,4> E; // One row
@@ -575,11 +570,8 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
                        lbasis[j].evaluateFunction(loc)*detJ*r->weight();
         }
       }
-      // and assemble element contributions
-      
-      // Own code:
+      // and assemble element contributions 
       for (int i=0;i<1;++i) {
-	// No need to check for MPC
 	int indexi;
 	if (cellFaces_.empty())
 	  indexi = getEquationForDof(qu,dir);
@@ -588,39 +580,10 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 	if (indexi > -1) {
 	  for (int j=0;j<4;++j) {
 	    int indexj = qi.v[j].i;
-	    //int indexj = p*4+j;
 	    B[indexi][indexj] += E[i][j];
 	  }
 	}
       }
-
-      // Old:
-      /*
-      for (int d=0;d<3;++d) {
-        for (int i=0;i<4;++i) {
-          MPC* mpc = A.getMPC(qu.v[i].i,d);
-          if (mpc) {
-            for (int n=0;n<mpc->getNoMaster();++n) {
-              int indexi = A.getEquationForDof(mpc->getMaster(n).node,d);
-              if (indexi > -1) {
-                for (int j=0;j<4;++j) {
-                  int indexj = qi.v[j].i*3+d;
-                  B[indexi][indexj] += E[i][j];
-                }
-              }
-            }
-          } else {
-            int indexi = A.getEquationForDof(qu.v[i].i,d);
-            if (indexi > -1) {
-              for (int j=0;j<4;++j) {
-                int indexj = qi.v[j].i*3+d;
-                B[indexi][indexj] += E[i][j];
-              }
-            }
-          }
-        }
-      }
-      */
     }
   }
 

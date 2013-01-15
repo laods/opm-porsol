@@ -1,4 +1,7 @@
-// Taken from elasticity-upscale (asmhandler.hh and asmhandler.tcc)
+/*
+  Copied from elasticity-upscale (asmhandler.hh and asmhandler.tcc)
+  Author: Arne Morten Kvarving / SINTEF
+*/
 
 //! \brief A sparse matrix holding our operator
 typedef Dune::BCRSMatrix<Dune::FieldMatrix<double,1,1> > Matrix;

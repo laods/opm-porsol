@@ -1,7 +1,26 @@
-// This header includes createPeriodic functions analogous to those in 
-// dune/porsol/common/PeriodicHelpers.hpp, but for the Mortar case.
-// The only change is that it does not search for periodic partners
-// in the X og Y directions.
+/*
+  This file is part of The Open Porous Media project (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+  This header includes createPeriodic functions analogous to those in
+  dune/porsol/common/PeriodicHelpers.hpp, but for the mortar approach.
+  The only change is that it does not search for periodic partners
+  in the X og Y directions.
+*/
 
 #include <dune/porsol/common/PeriodicHelpers.hpp>
 
