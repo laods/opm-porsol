@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: mortar_mimetic_periodic_test_larso.cpp
+// File: mortar_mimetic_periodic_test.cpp
 //
 // Author(s): Lars Vingli Odsæter <lars.odsater@gmail.com>
 //
