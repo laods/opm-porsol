@@ -1,3 +1,17 @@
+This repository is a fork of OPM/opm-porsol. It contains a new approach
+for handling periodic boundary conditions. This approach is based on a 
+mortar method, and this work is done as a part of my Master's thesis in
+Industrial Mathematics at NTNU:
+
+  "Numerical Aspects of Flow Based Local Upscaling" (jan. 2013)
+
+opm-porsol is an OPM module and depends on DUNE 2.0 and the following
+revisions of two OPM modules:
+
+  - opm-core @9571b30556
+  - dune-cornerpoint @7de40f2a9a
+
+
 Preparing the Sources
 =========================
 
