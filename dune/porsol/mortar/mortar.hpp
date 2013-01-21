@@ -539,6 +539,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 						 int dir)
 {
 
+  // construct adjacency pattern
   std::vector< std::set<int> > adj;
   adj.resize(nEqns_);
 
@@ -565,7 +566,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
 
   // get a set of P0 shape functions for the face pressures
   P0ShapeFunctionSet<ctype,ctype,2> pbasis = P0ShapeFunctionSet<ctype,ctype,2>::instance();
-  // get a set of PN shape functions for multipliers
+  // get a set of P1 shape functions for multipliers
   P1ShapeFunctionSet<ctype,ctype,2> lbasis = P1ShapeFunctionSet<ctype,ctype,2>::instance();
   // get a reference element
   Dune::GeometryType gt;
@@ -598,7 +599,7 @@ Matrix MortarHelper<GridInterface>::findLMatrixMortar(const BoundaryGrid& b1,
                        lbasis[j].evaluateFunction(loc)*detJ*r->weight();
         }
       }
-      // and assemble element contributions 
+      // assemble element contributions 
       for (int i=0;i<1;++i) {
 	int indexi;
 	if (cellFaces_.empty())
