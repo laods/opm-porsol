@@ -85,7 +85,8 @@ namespace Opm {
 	/// @param
 	void initObj(const GridInterface& grid,
 		     const ReservoirProperties& resprop,
-		     const BoundaryConditions& boundary);
+		     const BoundaryConditions& boundary,
+                     const int flow_dir = -1);
 	/// @brief
 	/// @todo Doc me
 	/// @param
@@ -167,6 +168,7 @@ namespace Opm {
     std::vector<int> direclet_cells_;
     std::vector<double> direclet_sat_;
     std::vector<double> direclet_hfaces_;
+    std::vector<bool> direclet_inletface_;
     //std::vector< double >		trans_;
     std::vector<double> htrans_;
     Opm::ImplicitTransportDetails::NRControl ctrl_;
