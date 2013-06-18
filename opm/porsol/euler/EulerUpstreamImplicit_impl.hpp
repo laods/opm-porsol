@@ -206,8 +206,8 @@ namespace Opm
         // use fractional flow instead of saturation as src
         TwophaseFluid myfluid(myrp_);
         int num_b=direclet_cells_.size();
-	double fl_sum_inlet = 0.0;
-        int inlet_faces = 0;
+	double avg_fracflow_inlet_permScaled = 0.0; // Flux not available yet
+	double total_perm_inlet = 0.0;
         for(int i=0; i <num_b; ++i){
             Dune::array<double,2> sat = {{direclet_sat_[2*i] ,direclet_sat_[2*i+1] }};
             Dune::array<double,2> mob;
@@ -217,8 +217,9 @@ namespace Opm
             if (fl < 0.0) fl = 0.0;
             if (fl > 1.0) fl = 1.0;     
             if (direclet_inletface_[i]) {
-                fl_sum_inlet += fl;
-                ++inlet_faces;
+		double perm = r.permeability(direclet_cells_[i])(flow_dir,flow_dir);
+		avg_fracflow_inlet_permScaled += fl*perm;
+		total_perm_inlet += perm;
             }
             direclet_sat_[2*i] = fl;
             direclet_sat_[2*i+1] = 1-fl;
@@ -227,14 +228,13 @@ namespace Opm
                       << "Saturation (BC): " << sat[0] << ",\tFrac flow water: " << fl << std::endl;
         }
 
-	// Set inlet frac flow to average frac flow
-	double fl_avg_inlet = 0.5;
-	if (inlet_faces != 0)
-            fl_avg_inlet = fl_sum_inlet / inlet_faces;
-        for(int i=0; i <num_b; ++i){
+	// Set inlet frac flow to avg frac flow
+	if (total_perm_inlet != 0)
+	    avg_fracflow_inlet_permScaled = avg_fracflow_inlet_permScaled / total_perm_inlet;
+        for (int i=0; i <num_b; ++i){
             if (direclet_inletface_[i]) { 
-                direclet_sat_[2*i] = fl_avg_inlet;
-                direclet_sat_[2*i+1] = 1-fl_avg_inlet;
+                direclet_sat_[2*i] = avg_fracflow_inlet_permScaled;
+                direclet_sat_[2*i+1] = 1-avg_fracflow_inlet_permScaled;
             }
 	}
 	
