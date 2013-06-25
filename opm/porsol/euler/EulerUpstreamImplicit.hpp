@@ -86,7 +86,7 @@ namespace Opm {
 	void initObj(const GridInterface& grid,
 		     const ReservoirProperties& resprop,
 		     const BoundaryConditions& boundary,
-                     const int flow_dir = -1);
+                     const double boundary_sat = -1);
 	/// @brief
 	/// @todo Doc me
 	/// @param

@@ -95,7 +95,7 @@ namespace Opm
 
 
     template <class GI, class RP, class BC>
-    inline void EulerUpstreamImplicit<GI, RP, BC>::initObj(const GI& g, const RP& r, const BC& b, const int flow_dir)
+    inline void EulerUpstreamImplicit<GI, RP, BC>::initObj(const GI& g, const RP& r, const BC& b, const double boundary_sat)
     {
         //residual_computer_.initObj(g, r, b);
 
@@ -192,52 +192,40 @@ namespace Opm
                         direclet_sat_.push_back(b.satCond(*f).saturation());
                         direclet_sat_.push_back(1-b.satCond(*f).saturation());//only work for 2 phases
                         direclet_hfaces_.push_back(hf_ind);
-                        if (f->localIndex() == flow_dir*2)
-                            direclet_inletface_.push_back(true);
-                        else
-                            direclet_inletface_.push_back(false);
                     }
                 }
                 hf_ind+=1;
             }
         }
 
+	// laods
+	// Find volume averaged frac flow
+        int num_b=direclet_cells_.size();	
+        TwophaseFluid myfluid(myrp_);
+	double avg_frac_flow = 0.0;
+	double tot_porevol = 0.0;
+
+        ASSERT(boundary_sat > 0.0);
+        
+	if (num_b > 0) { // If there exists Direclet faces
+	    for (CIt c = g.cellbegin(); c != g.cellend(); ++c) {
+		int ci = c->index();
+		double fl = r.fractionalFlow(ci, boundary_sat);
+		if (fl < 0.0) fl = 0.0;
+		if (fl > 1.0) fl = 1.0; 
+		avg_frac_flow += fl*porevol_[ci];
+		tot_porevol += porevol_[ci];
+	    }
+	    avg_frac_flow = avg_frac_flow / tot_porevol;
+	}
+	// end laods
+
         mygrid_.makeQPeriodic(periodic_hfaces_,periodic_cells_);
         // use fractional flow instead of saturation as src
-        TwophaseFluid myfluid(myrp_);
-        int num_b=direclet_cells_.size();
-	double fl_sum_inlet = 0.0;
-        int inlet_faces = 0;
-        for(int i=0; i <num_b; ++i){
-            Dune::array<double,2> sat = {{direclet_sat_[2*i] ,direclet_sat_[2*i+1] }};
-            Dune::array<double,2> mob;
-            Dune::array<double,2*2> dmob;
-            myfluid.mobility(direclet_cells_[i], sat, mob, dmob);
-            double fl = mob[0]/(mob[0]+mob[1]);
-            if (fl < 0.0) fl = 0.0;
-            if (fl > 1.0) fl = 1.0;     
-            if (direclet_inletface_[i]) {
-                fl_sum_inlet += fl;
-                ++inlet_faces;
-            }
-            direclet_sat_[2*i] = fl;
-            direclet_sat_[2*i+1] = 1-fl;
-            std::cout << std::setprecision(5);
-	    std::cout << "At cell " << direclet_cells_[i] << " (Centroid: " << mygrid_.cellCentroid(direclet_cells_[i])[0] << " " << mygrid_.cellCentroid(direclet_cells_[i])[1] << " " << mygrid_.cellCentroid(direclet_cells_[i])[2] << "):\t"
-                      << "Saturation (BC): " << sat[0] << ",\tFrac flow water: " << fl << std::endl;
-        }
-
-	// Set inlet frac flow to average frac flow
-	double fl_avg_inlet = 0.5;
-	if (inlet_faces != 0)
-            fl_avg_inlet = fl_sum_inlet / inlet_faces;
-        for(int i=0; i <num_b; ++i){
-            if (direclet_inletface_[i]) { 
-                direclet_sat_[2*i] = fl_avg_inlet;
-                direclet_sat_[2*i+1] = 1-fl_avg_inlet;
-            }
-	}
-	
+        for (int i=0; i <num_b; ++i) {
+            direclet_sat_[2*i] = avg_frac_flow;
+            direclet_sat_[2*i+1] = 1-avg_frac_flow;
+        }	
     }
 
     template <class GI, class RP, class BC>
