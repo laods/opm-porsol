@@ -48,47 +48,47 @@ namespace Opm
     /// unless periodic, in which case we assume unique boundary ids.
     template <class GridInterface, class BCs>
     inline void setupBoundaryConditions(const Opm::parameter::ParameterGroup& param,
-					const GridInterface& g,
-					BCs& bcs)
+                                        const GridInterface& g,
+                                        BCs& bcs)
     {
-	if (param.getDefault("upscaling", false)) {
-	    int bct = param.get<int>("boundary_condition_type");
-	    int pddir = param.getDefault("pressure_drop_direction", 0);
-	    double pdrop = param.getDefault("boundary_pressuredrop", 1.0e5);
-	    double bdy_sat = param.getDefault("boundary_saturation", 1.0);
-	    bool twodim_hack = param.getDefault("2d_hack", false);
-	    setupUpscalingConditions(g, bct, pddir, pdrop, bdy_sat, twodim_hack, bcs);
-	    return;
-	}
+        if (param.getDefault("upscaling", false)) {
+            int bct = param.get<int>("boundary_condition_type");
+            int pddir = param.getDefault("pressure_drop_direction", 0);
+            double pdrop = param.getDefault("boundary_pressuredrop", 1.0e5);
+            double bdy_sat = param.getDefault("boundary_saturation", 1.0);
+            bool twodim_hack = param.getDefault("2d_hack", false);
+            setupUpscalingConditions(g, bct, pddir, pdrop, bdy_sat, twodim_hack, bcs);
+            return;
+        }
         if (param.getDefault("region_based_bcs", false)) {
             setupRegionBasedConditions(param, g, bcs);
             return;
         }
-	// Make flow equation boundary conditions.
-	// Default is pressure 1.0e5 on the left, 0.0 on the right.
-	// Recall that the boundary ids range from 1 to 6 for the cartesian edges,
-	// and that boundary id 0 means interiour face/intersection.
-	std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
-	FlowBC::BCType bct = FlowBC::Dirichlet;
-	double leftval = 1.0*Opm::unit::barsa;
-	double rightval = 0.0;
-	if (flow_bc_type == "neumann") {
-	    bct = FlowBC::Neumann;
-	    leftval = param.get<double>("left_flux");
-	    rightval = param.getDefault<double>("right_flux", -leftval);
-	} else if (flow_bc_type == "dirichlet") {
-	    leftval = param.getDefault<double>("left_pressure", leftval);
-	    rightval = param.getDefault<double>("right_pressure", rightval);
-	} else if (flow_bc_type == "periodic") {
-	    THROW("Periodic conditions not here yet.");
-	} else {
-	    THROW("Unknown flow boundary condition type " << flow_bc_type);
-	}
-	bcs.resize(7);
-	bcs.flowCond(1) = FlowBC(bct, leftval);
-	bcs.flowCond(2) = FlowBC(bct, rightval);
+        // Make flow equation boundary conditions.
+        // Default is pressure 1.0e5 on the left, 0.0 on the right.
+        // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
+        // and that boundary id 0 means interiour face/intersection.
+        std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
+        FlowBC::BCType bct = FlowBC::Dirichlet;
+        double leftval = 1.0*Opm::unit::barsa;
+        double rightval = 0.0;
+        if (flow_bc_type == "neumann") {
+            bct = FlowBC::Neumann;
+            leftval = param.get<double>("left_flux");
+            rightval = param.getDefault<double>("right_flux", -leftval);
+        } else if (flow_bc_type == "dirichlet") {
+            leftval = param.getDefault<double>("left_pressure", leftval);
+            rightval = param.getDefault<double>("right_pressure", rightval);
+        } else if (flow_bc_type == "periodic") {
+            THROW("Periodic conditions not here yet.");
+        } else {
+            THROW("Unknown flow boundary condition type " << flow_bc_type);
+        }
+        bcs.resize(7);
+        bcs.flowCond(1) = FlowBC(bct, leftval);
+        bcs.flowCond(2) = FlowBC(bct, rightval);
 
-	// Default transport boundary conditions are used.
+        // Default transport boundary conditions are used.
     }
 
     /// @brief
@@ -96,71 +96,99 @@ namespace Opm
     /// @param
     template <class GridInterface, class BCs>
     inline void setupUpscalingConditions(const GridInterface& g,
-					 int bct,
-					 int pddir,
-					 double pdrop,
-					 double bdy_sat,
-					 bool twodim_hack,
-					 BCs& bcs)
+                                         int bct,
+                                         int pddir,
+                                         double pdrop,
+                                         double bdy_sat,
+                                         bool twodim_hack,
+                                         BCs& bcs)
     {
-	// Caution: This enum is copied from Upscaler.hpp.
-	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
+        // Caution: This enum is copied from Upscaler.hpp.
+        enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
         if (bct < 0 || bct > 2) {
             THROW("Illegal boundary condition type (0-2 are legal): " << bct); // Later on, we may allow 3 and 4.
         }
-	BoundaryConditionType bctype = static_cast<BoundaryConditionType>(bct);
+        BoundaryConditionType bctype = static_cast<BoundaryConditionType>(bct);
         ASSERT(pddir >=0 && pddir <= 2);
 
-	// Flow conditions.
-	switch (bctype) {
-	case Fixed:
-	    {
-		// ASSERT(!g.uniqueBoundaryIds());
-		bcs.clear();
-		bcs.resize(7);
-		bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, pdrop);
-		bcs.flowCond(2*pddir + 2) = FlowBC(FlowBC::Dirichlet, 0.0);
-		bcs.satCond(2*pddir + 1) = SatBC(SatBC::Dirichlet, bdy_sat); // The only possible inflow location.
-		for (int i = 0; i < 7; ++i) {
-		    bcs.setCanonicalBoundaryId(i, i);
-		}
-		break;
-	    }
-	case Linear:
-	    {
-		// ASSERT(g.uniqueBoundaryIds());
-		createLinear(bcs, g, pdrop, pddir, bdy_sat, twodim_hack);
-		break;
-	    }
-	case Periodic:
-	    {
-		// ASSERT(g.uniqueBoundaryIds());
-		FlowBC fb(FlowBC::Neumann, 0.0); // No-flow on all boundaries except in flow dir
-		Dune::array<FlowBC, 6> fcond = {{ fb, fb, fb, fb, fb, fb }};
-		fcond[2*pddir] = FlowBC(FlowBC::Periodic, pdrop);
-		fcond[2*pddir + 1] = FlowBC(FlowBC::Periodic, -pdrop);
-		SatBC sb(SatBC::Dirichlet, 1.0);
-		Dune::array<SatBC, 6> scond = {{ sb, sb, sb, sb, sb, sb }};
+        // Flow conditions.
+        switch (bctype) {
+        case Fixed:
+            {
+                // ASSERT(!g.uniqueBoundaryIds());
+                bcs.clear();
+                bcs.resize(7);
+                bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, pdrop);
+                bcs.flowCond(2*pddir + 2) = FlowBC(FlowBC::Dirichlet, 0.0);
+                bcs.satCond(2*pddir + 1) = SatBC(SatBC::Dirichlet, bdy_sat); // The only possible inflow location.
+                for (int i = 0; i < 7; ++i) {
+                    bcs.setCanonicalBoundaryId(i, i);
+                }
+                
+                std::cout << "From setupUpscalingConditions():" << std::endl
+                          << "Input BC type: " << bctype << std::endl;
+                for (int i=0; i<6; ++i) {
+                    std::cout << "  FlowBC: ";
+                    bcs.flowCond(i).write(std::cout);
+                    std::cout << " ,  SatBC: ";
+                    bcs.satCond(i).write(std::cout);
+                    std::cout << std::endl;
+                }
+                std::cout << "(Order: x_min, x_max, y_min, y_max, z_min, z_max)" << std::endl;
+                          
+                break;
+            }
+        case Linear:
+            {
+                // ASSERT(g.uniqueBoundaryIds());
+                createLinear(bcs, g, pdrop, pddir, bdy_sat, twodim_hack);
+                
+                std::cout << "From setupUpscalingConditions():" << std::endl
+                          << "Input BC type: " << bctype << std::endl;
+                          
+                break;
+            }
+        case Periodic:
+            {
+                // ASSERT(g.uniqueBoundaryIds());
+                FlowBC fb(FlowBC::Neumann, 0.0); // No-flow on all boundaries except in flow dir
+                Dune::array<FlowBC, 6> fcond = {{ fb, fb, fb, fb, fb, fb }};
+                fcond[2*pddir] = FlowBC(FlowBC::Periodic, pdrop);
+                fcond[2*pddir + 1] = FlowBC(FlowBC::Periodic, -pdrop);
+                SatBC sb(SatBC::Dirichlet, 1.0);
+                Dune::array<SatBC, 6> scond = {{ sb, sb, sb, sb, sb, sb }};
                 scond[2*pddir] = SatBC(SatBC::Periodic, 0.0);
                 scond[2*pddir + 1] = SatBC(SatBC::Periodic, 0.0);
-		if (twodim_hack) {
-// 		    fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
-// 		    fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
-		    fcond[4] = FlowBC(FlowBC::Neumann, 0.0);
-		    fcond[5] = FlowBC(FlowBC::Neumann, 0.0);
-// 		    scond[2] = SatBC(SatBC::Dirichlet, 1.0);
-// 		    scond[3] = SatBC(SatBC::Dirichlet, 1.0);
-		    scond[4] = SatBC(SatBC::Dirichlet, 1.0);
-		    scond[5] = SatBC(SatBC::Dirichlet, 1.0);
-		}
-		createPeriodic(bcs, g, fcond, scond);
-		break;
-	    }
-	default:
-	    THROW("Error in switch statement, should never be here.");
-	}
+                if (twodim_hack) {
+//                  fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
+//                  fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
+                    fcond[4] = FlowBC(FlowBC::Neumann, 0.0);
+                    fcond[5] = FlowBC(FlowBC::Neumann, 0.0);
+//                  scond[2] = SatBC(SatBC::Dirichlet, 1.0);
+//                  scond[3] = SatBC(SatBC::Dirichlet, 1.0);
+                    scond[4] = SatBC(SatBC::Dirichlet, 1.0);
+                    scond[5] = SatBC(SatBC::Dirichlet, 1.0);
+                }
+                createPeriodic(bcs, g, fcond, scond);
+                
+                std::cout << "From setupUpscalingConditions():" << std::endl
+                          << "Input BC type: " << bctype << std::endl;
+                for (int i=0; i<6; ++i) {
+                    std::cout << "  FlowBC: ";
+                    fcond[i].write(std::cout);
+                    std::cout << " ,  SatBC: ";
+                    scond[i].write(std::cout);
+                    std::cout << std::endl;
+                }
+                std::cout << "(Order: x_min, x_max, y_min, y_max, z_min, z_max)" << std::endl;
+                
+                break;
+            }
+        default:
+            THROW("Error in switch statement, should never be here.");
+        }
 
-	// Default transport boundary conditions are used.
+        // Default transport boundary conditions are used.
     }
 
 
