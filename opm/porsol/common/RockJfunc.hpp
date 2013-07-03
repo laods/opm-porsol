@@ -68,11 +68,17 @@ namespace Opm
 	void krw(const double saturation, double& krw_value) const
 	{
 	    krw_value = krw_(saturation);
+            // Handle out of range values
+            krw_value = std::min(krw_value, 1.0);
+            krw_value = std::max(krw_value, 0.0);
 	}
 
 	void kro(const double saturation, double& kro_value) const
 	{
 	    kro_value = kro_(saturation);
+            // Handle out of range values
+            kro_value = std::min(kro_value, 1.0);
+            kro_value = std::max(kro_value, 0.0);
 	}
 
 	void dkrw(const double saturation, double& dkrw_value) const
