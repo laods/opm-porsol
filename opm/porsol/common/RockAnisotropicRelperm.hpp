@@ -72,6 +72,11 @@ namespace Opm
 	    kr_value(0,0) = krxx_[phase_index](saturation);
 	    kr_value(1,1) = kryy_[phase_index](saturation);
 	    kr_value(2,2) = krzz_[phase_index](saturation);
+            // Handle out of range values
+            for (int i = 0; i < 3; ++i) {
+                kr_value(i,i) = std::min(kr_value(i,i), 1.0);
+                kr_value(i,i) = std::max(kr_value(i,i), 0.0);
+            }
 	}
 
 	template <template <class> class SP, class OP>
