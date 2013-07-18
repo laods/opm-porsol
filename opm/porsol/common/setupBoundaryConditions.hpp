@@ -127,7 +127,7 @@ namespace Opm
                 
                 std::cout << "From setupUpscalingConditions():" << std::endl
                           << "Input BC type: " << bctype << std::endl;
-                for (int i=0; i<6; ++i) {
+                for (int i=1; i<7; ++i) {
                     std::cout << "  FlowBC: ";
                     bcs.flowCond(i).write(std::cout);
                     std::cout << " ,  SatBC: ";
