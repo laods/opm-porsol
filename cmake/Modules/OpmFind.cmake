@@ -36,12 +36,14 @@ include (Duplicates)
 
 # list of suffixes for all the project variables
 set (_opm_proj_vars
+  SOURCES
   LINKER_FLAGS
   LIBRARIES
   DEFINITIONS
   INCLUDE_DIRS
   LIBRARY_DIRS
   CONFIG_VARS
+  CONFIG_IMPL_VARS
   )
 
 # ensure that they are at least the empty list after we're done
@@ -57,6 +59,7 @@ set (_opm_proj_exemptions
   dune-istl
   dune-grid
   dune-geometry
+  opm-parser
   )
 
 # although a DUNE module, it is delivered in the OPM suite
@@ -127,16 +130,30 @@ macro (find_and_append_package_to prefix name)
 	unset (${name}_DIR CACHE)
   endif ((NOT (_${name}_exempted EQUAL -1)) AND (DEFINED ${name}_DIR))
 
-  # using config mode is better than using module (aka. find) mode
-  # because then the package has already done all its probes and
-  # stored them in the config file for us
-  if (${name}_DIR)
-	message (STATUS "Finding package ${name} using config mode")
-	find_package (${name} ${ARGN} NO_MODULE PATHS ${${name}_DIR} NO_DEFAULT_PATH)
-  else (${name}_DIR)
-	message (STATUS "Finding package ${name} using module mode")
-	find_package (${name} ${ARGN})
-  endif (${name}_DIR)
+  # if we're told not to look for the package, pretend it was never found
+  if (CMAKE_DISABLE_FIND_PACKAGE_${name})
+	set (${name}_FOUND FALSE)
+	set (${NAME}_FOUND FALSE)
+  else ()
+	# using config mode is better than using module (aka. find) mode
+	# because then the package has already done all its probes and
+	# stored them in the config file for us
+	if (NOT DEFINED ${name}_FOUND AND NOT DEFINED ${NAME}_FOUND)
+	  if (${name}_DIR)
+		message (STATUS "Finding package ${name} using config mode")
+		find_package (${name} ${ARGN} NO_MODULE PATHS ${${name}_DIR} NO_DEFAULT_PATH)
+	  else ()
+		message (STATUS "Finding package ${name} using module mode")
+		find_package (${name} ${ARGN})
+	  endif ()
+	endif ()
+	if (NOT DEFINED ${name}_FOUND)
+	  set (${name}_FOUND "${${NAME}_FOUND}")
+	endif ()
+	if (NOT DEFINED ${NAME}_FOUND)
+	  set (${NAME}_FOUND "${${name}_FOUND}")
+	endif ()
+  endif ()
 
   # the variable "NAME" may be replaced during find_package (as this is
   # now a macro, and not a function anymore), so we must reinitialize
@@ -158,6 +175,12 @@ macro (find_and_append_package_to prefix name)
 		elseif (DEFINED ${NAME}_INCLUDE_PATH)
 		  list (APPEND ${prefix}_INCLUDE_DIRS ${${NAME}_INCLUDE_PATH})
 		endif (DEFINED ${name}_INCLUDE_PATH)
+		# some packages define only _DIR and not _DIRS (Hi, Eigen3!)
+		if (DEFINED ${name}_INCLUDE_DIR)
+		  list (APPEND ${prefix}_INCLUDE_DIRS ${${name}_INCLUDE_DIR})
+		elseif (DEFINED ${NAME}_INCLUDE_DIR)
+		  list (APPEND ${prefix}_INCLUDE_DIRS ${${NAME}_INCLUDE_DIR})
+		endif (DEFINED ${name}_INCLUDE_DIR)
 	  endif ("${var}" STREQUAL "INCLUDE_DIRS")
 	  # cleanup lists
 	  if ("${var}" STREQUAL "LIBRARIES")

@@ -33,14 +33,16 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_SETUPGRIDANDPROPS_HEADER
-#define OPENRS_SETUPGRIDANDPROPS_HEADER
+#ifndef OPM_SETUPGRIDANDPROPS_HEADER
+#define OPM_SETUPGRIDANDPROPS_HEADER
 
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 #include <opm/core/utility/Units.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/sgrid.hh>
 #include <opm/porsol/common/ReservoirPropertyCapillary.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <boost/filesystem.hpp>
 
 namespace Opm
@@ -64,34 +66,40 @@ namespace Opm
     /// @param
     template <template <int> class ResProp>
     inline void setupGridAndProps(const Opm::parameter::ParameterGroup& param,
-				  Dune::CpGrid& grid,
-				  ResProp<3>& res_prop)
+                                  Dune::CpGrid& grid,
+                                  ResProp<3>& res_prop)
     {
-	// Initialize grid and reservoir properties.
-	// Parts copied from Dune::CpGrid::init().
-	std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
-	if (fileformat == "sintef_legacy") {
-	    std::string grid_prefix = param.get<std::string>("grid_prefix");
-	    grid.readSintefLegacyFormat(grid_prefix);
-	    MESSAGE("Warning: We do not yet read legacy reservoir properties. Using defaults.");
-	    res_prop.init(grid.size(0));
-	} else if (fileformat == "eclipse") {
+        // Initialize grid and reservoir properties.
+        // Parts copied from Dune::CpGrid::init().
+        std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
+        if (fileformat == "sintef_legacy") {
+            std::string grid_prefix = param.get<std::string>("grid_prefix");
+            grid.readSintefLegacyFormat(grid_prefix);
+            OPM_MESSAGE("Warning: We do not yet read legacy reservoir properties. Using defaults.");
+            res_prop.init(grid.size(0));
+        } else if (fileformat == "eclipse") {
             std::string ecl_file = param.get<std::string>("filename");
-	    Opm::EclipseGridParser parser(ecl_file);
-	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
-	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
-	    grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
+
+            Opm::ParserPtr parser(new Opm::Parser());
+            Opm::DeckConstPtr deck(parser->parseFile(ecl_file));
+            double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
+            bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
+            bool turn_normals = param.getDefault<bool>("turn_normals", false);
+            grid.processEclipseFormat(deck, z_tolerance, periodic_extension, turn_normals);
             // Save EGRID file in case we are writing ECL output.
             if (param.getDefault("output_ecl", false)) {
+                OPM_THROW(std::runtime_error, "Saving to EGRID files is not yet implemented");
+                /*
                 boost::filesystem::path ecl_path(ecl_file);
-                ecl_path.replace_extension(".FEGRID");
-                parser.saveEGRID(ecl_path.string());
+                const std::vector<int>& globalCell = grid.globalCell();
+                ecl_path.replace_extension(".EGRID");
+                parser.saveEGRID(ecl_path.string() , (int) globalCell.size() , &globalCell[0]);
+                */
             }
             double perm_threshold_md = param.getDefault("perm_threshold_md", 0.0);
-	    double perm_threshold = Opm::unit::convert::from(perm_threshold_md, Opm::prefix::milli*Opm::unit::darcy);
-	    std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
-	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
+            double perm_threshold = Opm::unit::convert::from(perm_threshold_md, Opm::prefix::milli*Opm::unit::darcy);
+            std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
+            std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
             bool use_j = param.getDefault("use_jfunction_scaling", useJ<ResProp<3> >());
             double sigma = 1.0;
             double theta = 0.0;
@@ -104,34 +112,34 @@ namespace Opm
                 double v2 = param.getDefault("viscosity2", 0.003);
                 res_prop.setViscosities(v1, v2);
             }
-	    res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr,
+            res_prop.init(deck, grid.globalCell(), perm_threshold, rl_ptr,
                           use_j, sigma, theta);
-	} else if (fileformat == "cartesian") {
-	    Dune::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
-				    param.getDefault<int>("ny", 1),
-				    param.getDefault<int>("nz", 1) }};
-	    Dune::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
-					 param.getDefault<double>("dy", 1.0),
-					 param.getDefault<double>("dz", 1.0) }};
-	    grid.createCartesian(dims, cellsz);
-	    double default_poro = param.getDefault("default_poro", 0.2);
-	    double default_perm_md = param.getDefault("default_perm_md", 100.0);
-	    double default_perm = Opm::unit::convert::from(default_perm_md, Opm::prefix::milli*Opm::unit::darcy);
-	    MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
-	    res_prop.init(grid.size(0), default_poro, default_perm);
-	} else {
-	    THROW("Unknown file format string: " << fileformat);
-	}
-	if (param.getDefault("use_unique_boundary_ids", false)) {
-	    grid.setUniqueBoundaryIds(true);
-	}
+        } else if (fileformat == "cartesian") {
+            std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+                                    param.getDefault<int>("ny", 1),
+                                    param.getDefault<int>("nz", 1) }};
+            std::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+                                         param.getDefault<double>("dy", 1.0),
+                                         param.getDefault<double>("dz", 1.0) }};
+            grid.createCartesian(dims, cellsz);
+            double default_poro = param.getDefault("default_poro", 0.2);
+            double default_perm_md = param.getDefault("default_perm_md", 100.0);
+            double default_perm = Opm::unit::convert::from(default_perm_md, Opm::prefix::milli*Opm::unit::darcy);
+            OPM_MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
+            res_prop.init(grid.size(0), default_poro, default_perm);
+        } else {
+            OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
+        }
+        if (param.getDefault("use_unique_boundary_ids", false)) {
+            grid.setUniqueBoundaryIds(true);
+        }
     }
 
     /// @brief
     /// @todo Doc me!
     /// @param
     template <template <int> class ResProp>
-    inline void setupGridAndPropsEclipse(const Opm::EclipseGridParser& parser,
+    inline void setupGridAndPropsEclipse(Opm::DeckConstPtr deck,
                                          double z_tolerance,
                                          bool periodic_extension,
                                          bool turn_normals,
@@ -145,12 +153,12 @@ namespace Opm
                                          Dune::CpGrid& grid,
                                          ResProp<3>& res_prop)
     {
-        grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals, clip_z);
+        grid.processEclipseFormat(deck, z_tolerance, periodic_extension, turn_normals, clip_z);
         const std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
-        res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr, use_jfunction_scaling, sigma, theta);
-	if (unique_bids) {
-	    grid.setUniqueBoundaryIds(true);
-	}
+        res_prop.init(deck, grid.globalCell(), perm_threshold, rl_ptr, use_jfunction_scaling, sigma, theta);
+        if (unique_bids) {
+            grid.setUniqueBoundaryIds(true);
+        }
     }
 
     /// @brief
@@ -158,28 +166,28 @@ namespace Opm
     /// @param
     template <template <int> class ResProp>
     inline void setupGridAndProps(const Opm::parameter::ParameterGroup& param,
-				  Dune::SGrid<3, 3>& grid,
-				  ResProp<3>& res_prop)
+                                  Dune::SGrid<3, 3>& grid,
+                                  ResProp<3>& res_prop)
     {
-	// Initialize grid and reservoir properties.
-	// Parts copied from Dune::CpGrid::init().
-	std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
-	if (fileformat == "cartesian") {
-	    Dune::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
-				    param.getDefault<int>("ny", 1),
-				    param.getDefault<int>("nz", 1) }};
-	    Dune::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
-					 param.getDefault<double>("dy", 1.0),
-					 param.getDefault<double>("dz", 1.0) }};
+        // Initialize grid and reservoir properties.
+        // Parts copied from Dune::CpGrid::init().
+        std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
+        if (fileformat == "cartesian") {
+            std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+                                    param.getDefault<int>("ny", 1),
+                                    param.getDefault<int>("nz", 1) }};
+            std::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+                                         param.getDefault<double>("dy", 1.0),
+                                         param.getDefault<double>("dz", 1.0) }};
             grid.~SGrid<3,3>();
             new (&grid) Dune::SGrid<3, 3>(&dims[0], &cellsz[0]);
-	    double default_poro = param.getDefault("default_poro", 0.2);
-	    double default_perm = param.getDefault("default_perm", 100.0*Opm::prefix::milli*Opm::unit::darcy);
-	    MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
-	    res_prop.init(grid.size(0), default_poro, default_perm);
-	} else {
-	    THROW("Dune::SGrid can only handle cartesian grids, unsupported file format string: " << fileformat);
-	}
+            double default_poro = param.getDefault("default_poro", 0.2);
+            double default_perm = param.getDefault("default_perm", 100.0*Opm::prefix::milli*Opm::unit::darcy);
+            OPM_MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
+            res_prop.init(grid.size(0), default_poro, default_perm);
+        } else {
+            OPM_THROW(std::runtime_error, "Dune::SGrid can only handle cartesian grids, unsupported file format string: " << fileformat);
+        }
     }
 
 } // namespace Opm

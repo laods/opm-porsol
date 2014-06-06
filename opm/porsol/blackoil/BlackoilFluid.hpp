@@ -23,7 +23,6 @@
 
 #include <opm/porsol/blackoil/fluid/FluidMatrixInteractionBlackoil.hpp>
 #include <opm/porsol/blackoil/fluid/FluidStateBlackoil.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <dune/common/fvector.hh>
 #include <vector>
 
@@ -44,15 +43,15 @@ namespace Opm
         typedef FluidStateBlackoil FluidState;
         typedef BlackoilFluidData FluidData;
 
-        void init(const Opm::EclipseGridParser& parser)
+        void init(Opm::DeckConstPtr deck)
         {
-            fmi_params_.init(parser);
+            fmi_params_.init(deck);
             // FluidSystemBlackoil<>::init(parser);
-            pvt_.init(parser);
-            const std::vector<double>& dens = parser.getDENSITY().densities_[0];
-            surface_densities_[Oil] = dens[0];
-            surface_densities_[Water] = dens[1];
-            surface_densities_[Gas] = dens[2];
+            pvt_.init(deck);
+            Opm::DeckRecordConstPtr densityRecord = deck->getKeyword("DENSITY")->getRecord(0);
+            surface_densities_[Oil] = densityRecord->getItem("OIL")->getSIDouble(0);
+            surface_densities_[Water] = densityRecord->getItem("WATER")->getSIDouble(0);
+            surface_densities_[Gas] = densityRecord->getItem("GAS")->getSIDouble(0);
         }
 
         FluidState computeState(PhaseVec phase_pressure, CompVec z) const
@@ -425,11 +424,11 @@ namespace Opm
                         const double dt)
         {
             int num_cells = cell_z.size();
-            ASSERT(num_cells == grid.numCells());
+            assert(num_cells == grid.numCells());
             const int np = numPhases;
             const int nc = numComponents;
-            BOOST_STATIC_ASSERT(np == nc);
-            BOOST_STATIC_ASSERT(np == 3);
+            static_assert(np == nc, "");
+            static_assert(np == 3, "");
 
             // p, z -> B, dB, R, dR, mu, A, dA, u, sum(u), s, c, cT, ex, kr, dkr, lambda, dlambda.
             cell_data.phase_pressure = cell_pressure;
@@ -472,7 +471,7 @@ namespace Opm
                                      const CompVec& bdy_z)
         {
             int num_faces = face_pressure.size();
-            ASSERT(num_faces == grid.numFaces());
+            assert(num_faces == grid.numFaces());
             bool nonzero_gravity = gravity.two_norm() > 0.0;
             face_data.state_matrix.resize(num_faces);
             face_data.mobility.resize(num_faces);

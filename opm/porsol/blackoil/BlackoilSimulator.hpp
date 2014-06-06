@@ -25,11 +25,12 @@
 
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <opm/core/utility/Units.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 #include <opm/porsol/common/BoundaryConditions.hpp>
 #include <opm/porsol/blackoil/BlackoilInitialization.hpp>
 #include <opm/porsol/common/SimulatorUtilities.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
@@ -115,34 +116,37 @@ init(const Opm::parameter::ParameterGroup& param)
     using namespace Opm;
     std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
     if (fileformat == "eclipse") {
-        Opm::EclipseGridParser parser(param.get<std::string>("filename"));
+        Opm::ParserPtr parser(new Opm::Parser());
+        Opm::DeckConstPtr deck = parser->parseFile(param.get<std::string>("filename"));
         double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
         bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
         bool turn_normals = param.getDefault<bool>("turn_normals", false);
-        grid_.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
+        grid_.processEclipseFormat(deck, z_tolerance, periodic_extension, turn_normals);
         double perm_threshold_md = param.getDefault("perm_threshold_md", 0.0);
         double perm_threshold = Opm::unit::convert::from(perm_threshold_md, Opm::prefix::milli*Opm::unit::darcy);
-        rock_.init(parser, grid_.globalCell(), perm_threshold);
-        fluid_.init(parser);
-        wells_.init(parser, grid_, rock_);
+        rock_.init(deck, grid_.globalCell(), perm_threshold);
+        fluid_.init(deck);
+        wells_.init(deck, grid_, rock_);
     } else if (fileformat == "cartesian") {
-        Dune::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+        std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
                                       param.getDefault<int>("ny", 1),
                                       param.getDefault<int>("nz", 1) }};
-        Dune::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+        std::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
                                            param.getDefault<double>("dy", 1.0),
                                            param.getDefault<double>("dz", 1.0) }};
         grid_.createCartesian(dims, cellsz);
         double default_poro = param.getDefault("default_poro", 1.0);
         double default_perm_md = param.getDefault("default_perm_md", 100.0);
         double default_perm = unit::convert::from(default_perm_md, prefix::milli*unit::darcy);
-        MESSAGE("Warning: For generated cartesian grids, we use uniform rock properties.");
+        OPM_MESSAGE("Warning: For generated cartesian grids, we use uniform rock properties.");
         rock_.init(grid_.size(0), default_poro, default_perm);
-	Opm::EclipseGridParser parser(param.get<std::string>("filename")); // Need a parser for the fluids anyway.
-        fluid_.init(parser);
-        wells_.init(parser, grid_, rock_);
+
+        Opm::ParserPtr parser(new Opm::Parser());
+        Opm::DeckConstPtr deck = parser->parseFile(param.get<std::string>("filename"));
+        fluid_.init(deck);
+        wells_.init(deck, grid_, rock_);
     } else {
-        THROW("Unknown file format string: " << fileformat);
+        OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
     }
     flow_solver_.init(param);
     transport_solver_.init(param);
@@ -153,7 +157,7 @@ init(const Opm::parameter::ParameterGroup& param)
         report_times_.assign(beg, end);
         // File contains deltas, we want accumulated times.
         std::partial_sum(report_times_.begin(), report_times_.end(), report_times_.begin());
-        ASSERT(!report_times_.empty());
+        assert(!report_times_.empty());
         total_time_ = report_times_.back();
         initial_stepsize_ = report_times_.front();
     } else {
@@ -349,7 +353,7 @@ simulate()
 
         // Check if the flow solver succeeded.
         if (result == FlowSolver::VolumeDiscrepancyTooLarge) {
-            THROW("Flow solver refused to run due to too large volume discrepancy.");
+            OPM_THROW(std::runtime_error, "Flow solver refused to run due to too large volume discrepancy.");
         } else if (result == FlowSolver::FailedToConverge) {
             std::cout << "********* Nonlinear convergence failure: Shortening (pressure) stepsize, redoing step number " << step <<" **********" << std::endl;
             stepsize *= 0.5;
@@ -357,7 +361,7 @@ simulate()
             wells_.update(grid_.numCells(), start_state.well_perf_pressure_, start_state.well_perf_flux_);
             continue;
         }
-        ASSERT(result == FlowSolver::SolveOk);
+        assert(result == FlowSolver::SolveOk);
 
         // Update wells with new perforation pressures and fluxes.
         wells_.update(grid_.numCells(), state_.well_perf_pressure_, state_.well_perf_flux_);
@@ -497,7 +501,7 @@ output(const Grid& grid,
     vtkwriter.addCellData(mass_frac_flat, "massFrac", Fluid::numComponents);
     vtkwriter.addCellData(totflvol_dens, "total fl. vol.");
     vtkwriter.write(filebase + '-' + boost::lexical_cast<std::string>(step),
-                    Dune::VTKOptions::ascii);
+                    Dune::VTK::ascii);
 
     // Dump data for Matlab.
     std::vector<double> zv[Fluid::numComponents];

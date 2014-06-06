@@ -33,23 +33,28 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
 
-#include <boost/static_assert.hpp>
 
-#include <dune/common/array.hh>
+#include <array>
+
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
+#include <dune/common/parallel/mpihelper.hh>
+#else
 #include <dune/common/mpihelper.hh>
+#endif
 #include <opm/core/utility/Units.hpp>
 
 #if HAVE_ALUGRID
 #include <dune/common/shared_ptr.hh>
 #include <dune/grid/io/file/gmshreader.hh>
+// dune-grid 2.2.0 tests for this define instead of HAVE_ALUGRID
+#define ENABLE_ALUGRID 1
 #include <dune/grid/alugrid.hh>
 #endif
 
@@ -58,8 +63,6 @@
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
-#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 
 #include <opm/porsol/common/fortran.hpp>
 #include <opm/porsol/common/blas_lapack.hpp>
@@ -135,7 +138,7 @@ void test_flowsolver(const GI& g, const RI& r)
     vtkwriter.addCellData(cell_velocity_flat, "velocity", dim);
     vtkwriter.addCellData(cell_pressure, "pressure");
     vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(0),
-                    Dune::VTKOptions::ascii);
+                    Dune::VTK::ascii);
 #else    
     solver.printSystem("system");
     typedef typename FlowSolver::SolutionType FlowSolution;
@@ -162,6 +165,7 @@ void test_flowsolver(const GI& g, const RI& r)
 using namespace Opm;
 
 int main(int argc, char** argv)
+try
 {
     Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
@@ -185,4 +189,8 @@ int main(int argc, char** argv)
 #endif
 
     test_flowsolver<3>(g, res_prop);
+}
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
 }

@@ -76,12 +76,12 @@ namespace Opm {
 
         /// @brief Data size query.
         ///
-        /// @return Number of elements in storage Dune::array.
+        /// @return Number of elements in storage std::array.
         int size() const { return data_.size(); }
 
         /// @brief Direct access to all data.
         ///
-        /// @return Pointer to first element of storage Dune::array.
+        /// @return Pointer to first element of storage std::array.
         T*       data()       { return &data_[0]; }
         const T* data() const { return &data_[0]; }
 
@@ -89,13 +89,13 @@ namespace Opm {
         /// @brief Constructor.
         ///
         /// @param [in] sz
-        ///    Number of elements in FullMatrix storage Dune::array.
+        ///    Number of elements in FullMatrix storage std::array.
         ///
         /// @param [in] data
         ///    Initial data vector.  If non-NULL, must contain @code
         ///    sz @endcode elements which will be assigned to a
-        ///    freshly allocated storage Dune::array.  If NULL, a @code sz
-        ///    @endcode element all-zero storage Dune::array will be
+        ///    freshly allocated storage std::array.  If NULL, a @code sz
+        ///    @endcode element all-zero storage std::array will be
         ///    constructed.
         OwnData(int sz, const T* data)
         {
@@ -132,12 +132,12 @@ namespace Opm {
 
         /// @brief Data size query.
         ///
-        /// @return Number of elements in storage Dune::array.
+        /// @return Number of elements in storage std::array.
         int size() const { return sz_; }
 
         /// @brief Direct access to all data.
         ///
-        /// @return Pointer to first element of storage Dune::array.
+        /// @return Pointer to first element of storage std::array.
         T*       data()       { return data_; }
         const T* data() const { return data_; }
 
@@ -145,7 +145,7 @@ namespace Opm {
         /// @brief Constructor.
         ///
         /// @param [in] sz
-        ///    Number of elements in FullMatrix storage Dune::array.
+        ///    Number of elements in FullMatrix storage std::array.
         ///
         /// @param [in] data
         ///    Initial data vector.  If non-NULL, must point to a @code
@@ -154,7 +154,7 @@ namespace Opm {
         SharedData(int sz, T* data)
             : sz_(sz), data_(data)
         {
-            ASSERT ((sz == 0) == (data == 0));
+            assert ((sz == 0) == (data == 0));
         }
 
     private:
@@ -183,19 +183,19 @@ namespace Opm {
 
         /// @brief Data size query.
         ///
-        /// @return Number of elements in storage Dune::array.
+        /// @return Number of elements in storage std::array.
         int size() const { return sz_; }
 
         /// @brief Direct access to all data.
         ///
-        /// @return Pointer to first element of storage Dune::array.
+        /// @return Pointer to first element of storage std::array.
         const T* data() const { return data_; }
 
     protected:
         /// @brief Constructor.
         ///
         /// @param [in] sz
-        ///    Number of elements in FullMatrix storage Dune::array.
+        ///    Number of elements in FullMatrix storage std::array.
         ///
         /// @param [in] data
         ///    Initial data vector.  Must be non-NULL and point to a
@@ -203,7 +203,7 @@ namespace Opm {
         ImmutableSharedData(int sz, const T* data)
             : sz_(sz), data_(data)
         {
-            ASSERT (data_ != 0);
+            assert (data_ != 0);
         }
 
     private:
@@ -268,15 +268,15 @@ namespace Opm {
     public:
         /// @brief
         ///    Retrieve the (BLAS/LAPACK) leading dimension of the
-        ///    matrix storage Dune::array.
+        ///    matrix storage std::array.
         ///
         /// @return
         ///    Leading dimension (i.e., the number of columns for a
-        ///    C-ordered matrix) of the matrix storage Dune::array.
+        ///    C-ordered matrix) of the matrix storage std::array.
         int leadingDimension() const { return numCols(); }
 
         /// @brief
-        ///    Retrieve the linear index (into storage Dune::array) of the
+        ///    Retrieve the linear index (into storage std::array) of the
         ///    element at specific row/column position of the current
         ///    matrix.
         ///
@@ -290,8 +290,8 @@ namespace Opm {
         ///    Linear index of (row,col) pair.
         int idx(int row, int col) const
         {
-            ASSERT ((0 <= row) && (row < numRows()));
-            ASSERT ((0 <= col) && (col < numCols()));
+            assert ((0 <= row) && (row < numRows()));
+            assert ((0 <= col) && (col < numCols()));
 
             return row*numCols() + col;
         }
@@ -323,15 +323,15 @@ namespace Opm {
     public:
         /// @brief
         ///    Retrieve the (BLAS/LAPACK) leading dimension of the
-        ///    matrix storage Dune::array.
+        ///    matrix storage std::array.
         ///
         /// @return
         ///    Leading dimension (i.e., the number of rows for a
-        ///    Fortran ordered matrix) of the matrix storage Dune::array.
+        ///    Fortran ordered matrix) of the matrix storage std::array.
         int leadingDimension() const { return numRows(); }
 
         /// @brief
-        ///    Retrieve the linear index (into storage Dune::array) of the
+        ///    Retrieve the linear index (into storage std::array) of the
         ///    element at specific row/column position of the current
         ///    matrix.
         ///
@@ -345,8 +345,8 @@ namespace Opm {
         ///    Linear index of (row,col) pair.
         int idx(int row, int col) const
         {
-            ASSERT ((0 <= row) && (row < numRows()));
-            ASSERT ((0 <= col) && (col < numCols()));
+            assert ((0 <= row) && (row < numRows()));
+            assert ((0 <= col) && (col < numCols()));
 
             return row + col*numRows();
         }
@@ -380,7 +380,7 @@ namespace Opm {
 
     /// @brief
     ///    Dynamically sized m-by-n matrix with general element
-    ///    storage (in a linear Dune::array) and element ordering.
+    ///    storage (in a linear std::array) and element ordering.
     ///
     /// @tparam T
     ///    Element type.
@@ -458,8 +458,8 @@ namespace Opm {
         template <template<typename> class OtherSP, class OtherOP>
         FullMatrix& operator=(const FullMatrix<T, OtherSP, OtherOP>& m)
         {
-            ASSERT(numRows() == m.numRows());
-            ASSERT(numCols() == m.numCols());
+            assert(numRows() == m.numRows());
+            assert(numCols() == m.numCols());
             for (int r = 0; r < numRows(); ++r) {
                 for (int c = 0; c < numCols(); ++c) {
                     this->operator()(r, c) = m(r,c);
@@ -506,7 +506,7 @@ namespace Opm {
         template <template<typename> class OtherSP>
         void operator+= (const FullMatrix<T, OtherSP, OrderingPolicy>& m)
         {
-            ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
+            assert(numRows() == m.numRows() && numCols() == m.numCols());
             std::transform(data(), data() + this->size(),
                            m.data(), data(), std::plus<T>());
         }
@@ -669,8 +669,8 @@ namespace Opm {
     prod(const Matrix& A, const Dune::FieldVector<typename Matrix::value_type,rows>& x)
     {
         const int cols = rows;
-        ASSERT (A.numRows() == rows);
-        ASSERT (A.numCols() == cols);
+        assert (A.numRows() == rows);
+        assert (A.numCols() == cols);
 
         Dune::FieldVector<typename Matrix::value_type, rows> res(0.0);
         for (int c = 0; c < cols; ++c) {
@@ -694,9 +694,9 @@ namespace Opm {
         int result_rows = A.numRows();
         int result_cols = B.numCols();
         int inner_dim = A.numCols();
-        ASSERT (inner_dim == B.numRows());
-        ASSERT(C.numRows() == result_rows);
-        ASSERT(C.numCols() == result_cols);
+        assert (inner_dim == B.numRows());
+        assert(C.numRows() == result_rows);
+        assert(C.numCols() == result_cols);
 
         for (int c = 0; c < result_cols; ++c) {
             for (int r = 0; r < result_rows; ++r) {
@@ -782,7 +782,7 @@ namespace Opm {
     {
         typedef typename FullMatrix<T,StoragePolicy,OrderingPolicy>::value_type value_type;
 
-        ASSERT (A.numRows() == A.numCols());
+        assert (A.numRows() == A.numCols());
 
         std::vector<int> ipiv(A.numRows());
         int info = 0;
@@ -917,8 +917,8 @@ namespace Opm {
                      const T&                                a2,
                      std::vector<T>&                         y)
     {
-        ASSERT(A.numRows() == y.size());
-        ASSERT(A.numCols() == x.size());
+        assert(A.numRows() == y.size());
+        assert(A.numCols() == x.size());
 
         Opm::BLAS_LAPACK::GEMV("No Transpose",
                                 A.numRows(), A.numCols(),
@@ -1003,8 +1003,8 @@ namespace Opm {
                      const T&                                a2,
                      std::vector<T>&                         y)
     {
-        ASSERT (A.numCols() == y.size());
-        ASSERT (A.numRows() == x.size());
+        assert (A.numCols() == y.size());
+        assert (A.numRows() == x.size());
 
         Opm::BLAS_LAPACK::GEMV("Transpose",
                                 A.numRows(), A.numCols(),
@@ -1140,9 +1140,9 @@ namespace Opm {
                       const T&                                 a2,
                       FullMatrix<T,SP3,FortranOrdering>&       C)
     {
-        ASSERT(A.numRows() == C.numRows());
-        ASSERT(A.numCols() == B.numRows());
-        ASSERT(B.numCols() == C.numCols());
+        assert(A.numRows() == C.numRows());
+        assert(A.numCols() == B.numRows());
+        assert(B.numCols() == C.numCols());
 
         int m = A.numRows();  // Number of *rows* in A
         int n = B.numCols();  // Number of *cols* in B
@@ -1198,9 +1198,9 @@ namespace Opm {
                       const T&                                 a2,
                       FullMatrix<T,SP3,FortranOrdering>&       C)
     {
-        ASSERT(A.numRows() == C.numRows());
-        ASSERT(B.numRows() == C.numCols());
-        ASSERT(A.numCols() == B.numCols());
+        assert(A.numRows() == C.numRows());
+        assert(B.numRows() == C.numCols());
+        assert(A.numCols() == B.numCols());
 
         int m = A.numRows();  // Number of *rows* in A
         int n = B.numRows();  // Number of *cols* in B'
@@ -1256,9 +1256,9 @@ namespace Opm {
                       const T&                                 a2,
                       FullMatrix<T,SP3,FortranOrdering>&       C)
     {
-        ASSERT (A.numCols() == C.numRows());
-        ASSERT (A.numRows() == B.numRows());
-        ASSERT (B.numCols() == C.numCols());
+        assert (A.numCols() == C.numRows());
+        assert (A.numRows() == B.numRows());
+        assert (B.numCols() == C.numCols());
 
         int m = A.numCols();  // Number of *rows* in A'
         int n = B.numCols();  // Number of *cols* in B

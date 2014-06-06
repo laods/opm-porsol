@@ -22,8 +22,7 @@
 
 
 #include <fstream>
-#include <boost/static_assert.hpp>
-#include <boost/array.hpp>
+#include <array>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 
 namespace Opm
@@ -42,17 +41,17 @@ namespace Opm
 
 
     template <int dim>
-    void Rock<dim>::init(const Opm::EclipseGridParser& parser,
+    void Rock<dim>::init(Opm::DeckConstPtr deck,
                          const std::vector<int>& global_cell,
                          const double perm_threshold)
     {
         // This code is mostly copied from ReservoirPropertyCommon::init(...).
-        BOOST_STATIC_ASSERT(dim == 3);
+        static_assert(dim == 3, "");
 
         permfield_valid_.assign(global_cell.size(), false);
 
-        assignPorosity    (parser, global_cell);
-        assignPermeability(parser, global_cell, perm_threshold);
+        assignPorosity    (deck, global_cell);
+        assignPermeability(deck, global_cell, perm_threshold);
     }
 
 
@@ -84,7 +83,7 @@ namespace Opm
     typename Rock<dim>::PermTensor
     Rock<dim>::permeability(int cell_index) const
     {
-        ASSERT (permfield_valid_[cell_index]);
+        assert (permfield_valid_[cell_index]);
 
         const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
         return K;
@@ -113,13 +112,13 @@ namespace Opm
 
 
     template <int dim>
-    void Rock<dim>::assignPorosity(const Opm::EclipseGridParser& parser,
+    void Rock<dim>::assignPorosity(Opm::DeckConstPtr deck,
                                    const std::vector<int>& global_cell)
     {
         porosity_.assign(global_cell.size(), 1.0);
 
-        if (parser.hasField("PORO")) {
-            const std::vector<double>& poro = parser.getFloatingPointValue("PORO");
+        if (deck->hasKeyword("PORO")) {
+            const std::vector<double>& poro = deck->getKeyword("PORO")->getSIDoubleData();
 
             for (int c = 0; c < int(porosity_.size()); ++c) {
                 porosity_[c] = poro[global_cell[c]];
@@ -130,14 +129,14 @@ namespace Opm
 
 
     template <int dim>
-    void Rock<dim>::assignPermeability(const Opm::EclipseGridParser& parser,
+    void Rock<dim>::assignPermeability(Opm::DeckConstPtr deck,
                                        const std::vector<int>& global_cell,
                                        double perm_threshold)
     {
-	Opm::EclipseGridInspector insp(parser);
-        std::tr1::array<int, 3> dims = insp.gridSize();
+        Opm::EclipseGridInspector insp(deck);
+        std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
-        ASSERT (num_global_cells > 0);
+        assert (num_global_cells > 0);
 
         permeability_.assign(dim * dim * global_cell.size(), 0.0);
 
@@ -147,12 +146,12 @@ namespace Opm
         const std::vector<double> zero(num_global_cells, 0.0);
         tensor.push_back(&zero);
 
-        BOOST_STATIC_ASSERT(dim == 3);
-        boost::array<int,9> kmap;
-        permeability_kind_ = fillTensor(parser, tensor, kmap);
+        static_assert(dim == 3, "");
+        std::array<int,9> kmap;
+        permeability_kind_ = fillTensor(deck, tensor, kmap);
 
         // Assign permeability values only if such values are
-        // given in the input deck represented by 'parser'.  In
+        // given in the input deck represented by 'deck'.  In
         // other words: Don't set any (arbitrary) default values.
         // It is infinitely better to experience a reproducible
         // crash than subtle errors resulting from a (poorly

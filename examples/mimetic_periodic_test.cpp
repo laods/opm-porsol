@@ -37,7 +37,7 @@
 
 #include <iostream>
 
-#include <boost/array.hpp>
+#include <array>
 
 #include <opm/core/utility/Units.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
@@ -55,10 +55,10 @@
 using namespace Opm;
 
 int main(int argc, char** argv)
+try
 {
     typedef Opm::GridInterfaceEuler<Dune::CpGrid>                       GI;
     typedef GI  ::CellIterator                                     CI;
-    typedef CI  ::FaceIterator                                     FI;
     typedef Opm::BasicBoundaryConditions<true, false>                  BCs;
     typedef Opm::ReservoirPropertyCapillary<3>                    RI;
     typedef Opm::IncompFlowSolverHybrid<GI, RI, BCs,
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     grid.setUniqueBoundaryIds(true);
     GridInterfaceEuler<Dune::CpGrid> g(grid);
     typedef FlowBC FBC;
-    Dune::array<FBC, 6> cond = {{ FBC(FBC::Periodic,  1.0*Opm::unit::barsa),
+    std::array<FBC, 6> cond = {{ FBC(FBC::Periodic,  1.0*Opm::unit::barsa),
                             FBC(FBC::Periodic, -1.0*Opm::unit::barsa),
                             FBC(FBC::Periodic,  0.0),
                             FBC(FBC::Periodic,  0.0),
@@ -115,5 +115,9 @@ int main(int argc, char** argv)
 #endif
     
     return 0;
+}
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
 }
 

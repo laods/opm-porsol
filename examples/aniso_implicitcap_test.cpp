@@ -37,9 +37,7 @@
 #define VERBOSE
 //#define USE_TBB
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif // HAVE_CONFIG_H
 
 #include "SimulatorTester.hpp"
 #include "SimulatorTesterFlexibleBC.hpp"
@@ -50,12 +48,15 @@
 #include <tbb/task_scheduler_init.h>
 #endif // USE_TBB
 
+#include <iostream>
+
 using namespace Opm;
 
 typedef SimulatorTraits<Anisotropic, ImplicitCap> SimTraits;
 typedef SimulatorTesterFlexibleBC<SimTraits> Simulator;
 
 int main(int argc, char** argv)
+try
 {
     Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
@@ -67,4 +68,9 @@ int main(int argc, char** argv)
     sim.init(param);
     sim.run();
 }
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
+}
+
 

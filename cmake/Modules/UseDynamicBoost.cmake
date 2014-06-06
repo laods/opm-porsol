@@ -1,5 +1,6 @@
-# be sure that this component is searched for
-find_package (Boost COMPONENTS unit_test_framework QUIET)
+if (NOT ${Boost_UNIT_TEST_FRAMEWORK_FOUND})
+  find_package (Boost 1.44.0 COMPONENTS unit_test_framework QUIET)
+endif ()
 
 if (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
   # setup to do a test compile
@@ -31,3 +32,6 @@ endif (${Boost_UNIT_TEST_FRAMEWORK_FOUND})
 set (HAVE_DYNAMIC_BOOST_TEST "${HAVE_DYNAMIC_BOOST_TEST}"
   CACHE BOOL "Whether Boost::Test is dynamically linked or not"
   )
+
+# include in config.h
+list (APPEND TESTING_CONFIG_VARS "HAVE_DYNAMIC_BOOST_TEST")

@@ -5,7 +5,7 @@
 // Created: Mon Oct 19 10:22:22 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -111,7 +111,7 @@ namespace Opm {
         /// @param [in] max_nf
         ///    Maximum number of faces/connections of any single cell
         ///    in the model.  Used to set the size of certain internal
-        ///    working Dune::arrays.  A cell with @f$n_f@f$ faces results in
+        ///    working std::arrays.  A cell with @f$n_f@f$ faces results in
         ///    an inner product matrix of size @f$n_f \times n_f@f$.
         MimeticIPAnisoRelpermEvaluator(const int max_nf)
             : max_nf_       (max_nf         ),
@@ -130,7 +130,7 @@ namespace Opm {
         /// @param [in] max_nf
         ///    Maximum number of faces/connections of any single cell
         ///    in the model.  Used to set the size of certain internal
-        ///    working Dune::arrays.  A cell with @f$n_f@f$ faces results in
+        ///    working std::arrays.  A cell with @f$n_f@f$ faces results in
         ///    an inner product matrix of size @f$n_f \times n_f@f$.
         void init(const int max_nf)
         {
@@ -224,10 +224,10 @@ namespace Opm {
 
             const int ci = c->index();
 
-            BOOST_STATIC_ASSERT (FV::dimension == int(dim));
-            ASSERT (int(t1_.size()) >= nf * dim);
-            ASSERT (int(t2_.size()) >= nf * dim);
-            ASSERT (int(fa_.size()) >= nf * nf);
+            static_assert (FV::dimension == int(dim), "");
+            assert (int(t1_.size()) >= nf * dim);
+            assert (int(t2_.size()) >= nf * dim);
+            assert (int(fa_.size()) >= nf * nf);
 
             SharedFortranMatrix T2  (nf, dim, &t2_      [0]);
             SharedFortranMatrix fa  (nf, nf , &fa_      [0]);
@@ -252,11 +252,11 @@ namespace Opm {
                     T2(i,j) = fc[j];
                 }
             }
-            ASSERT (i == nf);
+            assert (i == nf);
 
             // T2 <- orth(T2)
             if (orthogonalizeColumns(T2) != 0) {
-                ASSERT (false);
+                assert (false);
             }
 
             // second_term <- second_term - T2*T2' == I - Q*Q'
@@ -302,13 +302,13 @@ namespace Opm {
         {
             const int ci = c->index();
 
-            boost::array<Scalar, dim * dim> lambda_t;
-            boost::array<Scalar, dim * dim> pmob_data;
+            std::array<Scalar, dim * dim> lambda_t;
+            std::array<Scalar, dim * dim> pmob_data;
 
             SharedFortranMatrix pmob(dim, dim, &pmob_data[0]);
             SharedFortranMatrix Kg  (dim, 1  , &Kg_[ci][0]);
 
-            boost::array<Scalar, FluidInterface::NumberOfPhases> rho;
+            std::array<Scalar, FluidInterface::NumberOfPhases> rho;
             fl.phaseDensities(ci, rho);
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
@@ -392,7 +392,7 @@ namespace Opm {
         /// @brief Compute gravity flux for all faces of single cell.
         ///
         /// @tparam Vector
-        ///    Type representing a vector (or a linear Dune::array) for
+        ///    Type representing a vector (or a linear std::array) for
         ///    which (a constant time) @code operator[] @endcode is
         ///    defined.
         ///
@@ -422,8 +422,8 @@ namespace Opm {
 	Opm::SparseTable<Scalar>           second_term_ ;
 	Opm::SparseTable<Scalar>           n_           ;
 	Opm::SparseTable<Scalar>           Kg_          ;
-        boost::array<Scalar, dim>     dyn_Kg_      ;
-        boost::array<double, dim*dim> lambdaK_     ;
+        std::array<Scalar, dim>     dyn_Kg_      ;
+        std::array<double, dim*dim> lambdaK_     ;
         const RockInterface*          prock_       ;
     };
 } // namespace Opm

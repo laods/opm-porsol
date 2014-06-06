@@ -20,9 +20,11 @@
 #ifndef OPM_FLUIDMATRIXINTERACTIONBLACKOIL_HEADER_INCLUDED
 #define OPM_FLUIDMATRIXINTERACTIONBLACKOIL_HEADER_INCLUDED
 
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/utility/UniformTableLinear.hpp>
 #include <opm/core/utility/buildUniformMonotoneTable.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/Utility/SgofTable.hpp>
+#include <opm/parser/eclipse/Utility/SwofTable.hpp>
 #include "BlackoilDefs.hpp"
 #include <iostream>
 #include <stdexcept>
@@ -39,23 +41,20 @@ class FluidMatrixInteractionBlackoilParams
 {
 public:
     typedef ScalarT Scalar;
-    void init(const Opm::EclipseGridParser& ep)
+    void init(Opm::DeckConstPtr deck)
     {
         // Extract input data.
-        const Opm::SGOF::table_t& sgof_table = ep.getSGOF().sgof_;
-        const Opm::SWOF::table_t& swof_table = ep.getSWOF().swof_;
-        if (sgof_table.size() != 1 || swof_table.size() != 1) {
-            std::cerr << "We must have exactly one SWOF and one SGOF table (at the moment).\n";
-            throw std::logic_error("Not implemented");
-        }
-        const std::vector<double>& sw = swof_table[0][0];
-        const std::vector<double>& krw = swof_table[0][1];
-        const std::vector<double>& krow = swof_table[0][2];
-        const std::vector<double>& pcow = swof_table[0][3];
-        const std::vector<double>& sg = sgof_table[0][0];
-        const std::vector<double>& krg = sgof_table[0][1];
-        const std::vector<double>& krog = sgof_table[0][2];
-        const std::vector<double>& pcog = sgof_table[0][3];
+        SwofTable swofTable(deck->getKeyword("SWOF"));
+        SgofTable sgofTable(deck->getKeyword("SGOF"));
+
+        const std::vector<double>& sw = swofTable.getSwColumn();
+        const std::vector<double>& krw = swofTable.getKrwColumn();
+        const std::vector<double>& krow = swofTable.getKrowColumn();
+        const std::vector<double>& pcow = swofTable.getPcowColumn();
+        const std::vector<double>& sg = sgofTable.getSgColumn();
+        const std::vector<double>& krg = sgofTable.getKrgColumn();
+        const std::vector<double>& krog = sgofTable.getKrogColumn();
+        const std::vector<double>& pcog = sgofTable.getPcogColumn();
 
         // Create tables for krw, krow, krg and krog.
         int samples = 200;

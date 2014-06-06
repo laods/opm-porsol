@@ -37,14 +37,14 @@
 
 #include "MiscibilityProps.hpp"
 
+#include <opm/parser/eclipse/Utility/PvtoTable.hpp>
+
 namespace Opm
 {
     class MiscibilityLiveOil : public MiscibilityProps
     {
     public:
-	typedef std::vector<std::vector<std::vector<double> > > table_t;
-
-	MiscibilityLiveOil(const table_t& pvto);
+	MiscibilityLiveOil(const PvtoTable& pvtoTable);
 	virtual ~MiscibilityLiveOil();
 
         virtual double getViscosity(int region, double press, const surfvol_t& surfvol) const;

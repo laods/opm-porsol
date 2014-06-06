@@ -22,6 +22,9 @@
 #	                      files can of course include other files than these;
 #	                      you should only add to this list if the *user* of
 #	                      the library needs it.
+#
+# ATTIC_FILES           Unmaintained files. This for the projects developers
+#                       only. Don't expect these files to build.
 
 # originally generated with the command:
 # find opm -name '*.c*' -a ! -wholename '*/twophase2/*' -printf '\t%p\n' | sort
@@ -63,6 +66,17 @@ list (APPEND EXAMPLE_SOURCE_FILES
 	examples/sim_steadystate_implicit.cpp
 	)
 
+# originally generated with the command:
+# find attic -name '*.c*' -printf '\t%p\n' | sort
+list (APPEND ATTIC_FILES
+	attic/appleyard/appleyard_test.cpp
+	attic/common/gie_test.cpp
+	attic/common/periodic_test.cpp
+	attic/common/rockjfunc_test.cpp
+	attic/euler/euler_upstream_test.cpp
+	attic/mimetic/mimetic_ipeval_test.cpp
+	)
+
 # programs listed here will not only be compiled, but also marked for
 # installation
 list (APPEND PROGRAM_SOURCE_FILES
@@ -79,78 +93,6 @@ list (APPEND PUBLIC_HEADER_FILES
 	opm/porsol/blackoil/BlackoilWells.hpp
 	opm/porsol/blackoil/co2fluid/benchmark3co2tables.hh
 	opm/porsol/blackoil/co2fluid/BlackoilCo2PVT.hpp
-	opm/porsol/blackoil/co2fluid/opm/common/exceptions.hh
-	opm/porsol/blackoil/co2fluid/opm/common/fixedlengthspline_.hh
-	opm/porsol/blackoil/co2fluid/opm/common/math.hh
-	opm/porsol/blackoil/co2fluid/opm/common/misc.hh
-	opm/porsol/blackoil/co2fluid/opm/common/splinecommon_.hh
-	opm/porsol/blackoil/co2fluid/opm/common/spline.hh
-	opm/porsol/blackoil/co2fluid/opm/common/valgrind.hh
-	opm/porsol/blackoil/co2fluid/opm/common/variablelengthspline_.hh
-	opm/porsol/blackoil/co2fluid/opm/material/binarycoefficients/brine_co2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/binarycoefficients/fullermethod.hh
-	opm/porsol/blackoil/co2fluid/opm/material/binarycoefficients/h2o_n2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/binarycoefficients/henryiapws.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/brine.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/ch4.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/co2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/component.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/h2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/h2o.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/iapws/common.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/iapws/region1.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/iapws/region2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/iapws/region4.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/n2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/nullcomponent.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/o2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/oil.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/simpleco2.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/simplednapl.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/simpleh2o.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/tabulatedcomponent.hh
-	opm/porsol/blackoil/co2fluid/opm/material/components/unit.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constants.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constraintsolvers/compositionfromfugacities.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constraintsolvers/computefromreferencephase.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constraintsolvers/immiscibleflash.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constraintsolvers/misciblemultiphasecomposition.hh
-	opm/porsol/blackoil/co2fluid/opm/material/constraintsolvers/ncpflash.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/brookscorey.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/brookscoreyparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/efftoabslaw.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/efftoabslawparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/linearmaterial.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/linearmaterialparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedbrookscorey.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedbrookscoreyparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedlinearmaterial.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedlinearmaterialparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedvangenuchten.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/regularizedvangenuchtenparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/vangenuchten.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/2p/vangenuchtenparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/Mp/2padapter.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/Mp/Mpbrookscorey.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/Mp/Mpbrookscoreyparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/Mp/Mplinearmaterial.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidmatrixinteractions/Mp/Mplinearmaterialparams.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidstates/compositionalfluidstate.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidstates/immisciblefluidstate.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidstates/nonequilibriumfluidstate.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/1pfluidsystem.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/2pimmisciblefluidsystem.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/basefluidsystem.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/brine_co2_system.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/gasphase.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/h2on2fluidsystem.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/liquidphase.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/nullparametercache.hh
-	opm/porsol/blackoil/co2fluid/opm/material/fluidsystems/parametercachebase.hh
-	opm/porsol/blackoil/co2fluid/opm/material/idealgas.hh
-	opm/porsol/blackoil/co2fluid/opm/material/settablephase.hh
-	opm/porsol/blackoil/co2fluid/opm/old_material/tabulatedmaterial2.hh
-	opm/porsol/blackoil/co2fluid/opm/old_material/tabulatedmaterial2hires.hh
 	opm/porsol/blackoil/ComponentTransport.hpp
 	opm/porsol/blackoil/fluid/BlackoilComponent.hpp
 	opm/porsol/blackoil/fluid/BlackoilDefs.hpp

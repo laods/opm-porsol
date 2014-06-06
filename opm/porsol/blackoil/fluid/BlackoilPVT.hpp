@@ -23,7 +23,7 @@
 
 #include "MiscibilityProps.hpp"
 #include "BlackoilDefs.hpp"
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <string>
 
@@ -33,7 +33,7 @@ namespace Opm
     class BlackoilPVT : public BlackoilDefs
     {
     public:
-	void init(const Opm::EclipseGridParser& ep);
+        void init(Opm::DeckConstPtr deck);
 
         double getViscosity(double press,
                             const CompVec& surfvol,

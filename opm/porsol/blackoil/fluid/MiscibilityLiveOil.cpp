@@ -28,12 +28,13 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
+#include "config.h"
 
 #include <algorithm>
 #include "MiscibilityLiveOil.hpp"
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/utility/linearInterpolation.hpp>
+#include <opm/parser/eclipse/Utility/PvtoTable.hpp>
 
 using namespace std;
 using namespace Opm;
@@ -47,38 +48,34 @@ namespace Opm
     //-------------------------------------------------------------------------
 
     /// Constructor
-    MiscibilityLiveOil::MiscibilityLiveOil(const table_t& pvto)
+    MiscibilityLiveOil::MiscibilityLiveOil(const PvtoTable& pvtoTable)
     {
-	// OIL, PVTO
-	const int region_number = 0;
-	if (pvto.size() != 1) {
-	    THROW("More than one PVD-region");
-	}
-	saturated_oil_table_.resize(4);
-	const int sz =  pvto[region_number].size();
-	for (int k=0; k<4; ++k) {
-	    saturated_oil_table_[k].resize(sz);
-	}
-	for (int i=0; i<sz; ++i) {
-	    saturated_oil_table_[0][i] = pvto[region_number][i][1]; // p
-	    saturated_oil_table_[1][i] = 1.0/pvto[region_number][i][2]; // 1/Bo
-	    saturated_oil_table_[2][i] = pvto[region_number][i][3];   // mu_o
-	    saturated_oil_table_[3][i] = pvto[region_number][i][0];     // Rs
-	}
-	
-	undersat_oil_tables_.resize(sz);
-	for (int i=0; i<sz; ++i) {
-	    undersat_oil_tables_[i].resize(3);
-	    int tsize = (pvto[region_number][i].size() - 1)/3;
-	    undersat_oil_tables_[i][0].resize(tsize);
-	    undersat_oil_tables_[i][1].resize(tsize);
-	    undersat_oil_tables_[i][2].resize(tsize);
-	    for (int j=0, k=0; j<tsize; ++j) {
-		undersat_oil_tables_[i][0][j] = pvto[region_number][i][++k];  // p
-		undersat_oil_tables_[i][1][j] = 1.0/pvto[region_number][i][++k];  // 1/Bo
-		undersat_oil_tables_[i][2][j] = pvto[region_number][i][++k];  // mu_o
-	    }
-	}
+        const auto &saturatedPvtoTable = *pvtoTable.getOuterTable();
+
+        saturated_oil_table_.resize(4);
+        saturated_oil_table_[0] = saturatedPvtoTable.getPressureColumn();
+        saturated_oil_table_[1] = saturatedPvtoTable.getOilFormationFactorColumn();
+	    saturated_oil_table_[2] = saturatedPvtoTable.getOilViscosityColumn();
+	    saturated_oil_table_[3] = saturatedPvtoTable.getGasSolubilityColumn();
+
+        // store the inverse of Bo...
+        int sz = saturated_oil_table_[1].size();
+        for (size_t i=0; i < saturated_oil_table_[1].size(); ++i) {
+            saturated_oil_table_[1][i] = 1.0/saturated_oil_table_[1][i];
+        }
+
+        undersat_oil_tables_.resize(sz);
+        for (int i=0; i<sz; ++i) {
+            const auto &undersaturatedPvtoTable = *pvtoTable.getInnerTable(i);
+
+            undersat_oil_tables_[i][0] = undersaturatedPvtoTable.getPressureColumn();
+            undersat_oil_tables_[i][1] = undersaturatedPvtoTable.getOilFormationFactorColumn();
+            undersat_oil_tables_[i][2] = undersaturatedPvtoTable.getOilViscosityColumn();
+            // store the inverted oil formation factor
+            for (size_t j=0; j<undersat_oil_tables_[i][1].size(); ++j) {
+                undersat_oil_tables_[i][1][j] = 1.0/undersat_oil_tables_[i][1][j];
+            }
+        }
 	
 	
 	// Fill in additional entries in undersaturated tables by interpolating/extrapolating 1/Bo and mu_o ...
@@ -181,7 +178,7 @@ namespace Opm
                                           int phase,
                                           std::vector<double>& output) const
     {
-        ASSERT(pressures.size() == surfvol.size());
+        assert(pressures.size() == surfvol.size());
         int num = pressures.size();
         output.resize(num);
 #pragma omp parallel for
@@ -201,7 +198,7 @@ namespace Opm
                                int phase,
                                std::vector<double>& output) const
     {
-        ASSERT(pressures.size() == surfvol.size());
+        assert(pressures.size() == surfvol.size());
         int num = pressures.size();
         output.resize(num);
 #pragma omp parallel for
@@ -231,7 +228,7 @@ namespace Opm
                                   std::vector<double>& output_R,
                                   std::vector<double>& output_dRdp) const
     {
-        ASSERT(pressures.size() == surfvol.size());
+        assert(pressures.size() == surfvol.size());
         int num = pressures.size();
         output_R.resize(num);
         output_dRdp.resize(num);
@@ -251,7 +248,7 @@ namespace Opm
                                int phase,
                                std::vector<double>& output) const
     {
-        ASSERT(pressures.size() == surfvol.size());
+        assert(pressures.size() == surfvol.size());
         int num = pressures.size();
         output.resize(num);
 #pragma omp parallel for
@@ -273,7 +270,7 @@ namespace Opm
                                   std::vector<double>& output_B,
                                   std::vector<double>& output_dBdp) const
     {
-        ASSERT(pressures.size() == surfvol.size());
+        assert(pressures.size() == surfvol.size());
         B(pressures, surfvol, phase, output_B);
         int num = pressures.size();
         output_dBdp.resize(num);
@@ -355,8 +352,8 @@ namespace Opm
 		int is = tableIndex(saturated_oil_table_[3], maxR);
 		double w = (maxR - saturated_oil_table_[3][is]) /
 		    (saturated_oil_table_[3][is+1] - saturated_oil_table_[3][is]);
-                ASSERT(undersat_oil_tables_[is][0].size() >= 2);
-                ASSERT(undersat_oil_tables_[is+1][0].size() >= 2);
+                assert(undersat_oil_tables_[is][0].size() >= 2);
+                assert(undersat_oil_tables_[is+1][0].size() >= 2);
 		double val1 =
 		    linearInterpolationDerivative(undersat_oil_tables_[is][0],
 					     undersat_oil_tables_[is][item],
@@ -378,8 +375,8 @@ namespace Opm
                 int is = tableIndex(saturated_oil_table_[3], maxR);
 		double w = (maxR - saturated_oil_table_[3][is]) /
 		    (saturated_oil_table_[3][is+1] - saturated_oil_table_[3][is]);
-                ASSERT(undersat_oil_tables_[is][0].size() >= 2);
-                ASSERT(undersat_oil_tables_[is+1][0].size() >= 2);
+                assert(undersat_oil_tables_[is][0].size() >= 2);
+                assert(undersat_oil_tables_[is+1][0].size() >= 2);
 		double val1 =
 		    linearInterpolation(undersat_oil_tables_[is][0],
 					      undersat_oil_tables_[is][item],

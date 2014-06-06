@@ -35,23 +35,22 @@
 
 
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
 
-#include <boost/static_assert.hpp>
 
-#include <dune/common/array.hh>
+#include <array>
 #include <dune/common/mpihelper.hh>
 #include <opm/core/utility/Units.hpp>
 
 // #if HAVE_ALUGRID
 // #include <dune/common/shared_ptr.hh>
 // #include <dune/grid/io/file/gmshreader.hh>
+// // dune-grid 2.2.0 tests for this define instead of HAVE_ALUGRID
+// #define ENABLE_ALUGRID 1
 // #include <dune/grid/alugrid.hh>
 // #endif
 
@@ -60,8 +59,6 @@
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
-#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 
 #include <opm/porsol/common/fortran.hpp>
 #include <opm/porsol/common/blas_lapack.hpp>
@@ -163,7 +160,7 @@ namespace Opm
         template <class BoundaryFace>
         FlowBC flowCond(const BoundaryFace& bf) const
         {
-            ASSERT(bf.boundary());
+            assert(bf.boundary());
             return FlowBC(FlowBC::Dirichlet, bfunc_(bf.centroid()));
         }
 
@@ -285,12 +282,13 @@ void test_flowsolver(const GI& g, const RI& r, double tol, int kind)
     vtkwriter.addCellData(cell_velocity_flat, "velocity", GI::GridType::dimension);
     vtkwriter.addCellData(cell_pressure, "pressure");
     vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(0),
-                    Dune::VTKOptions::ascii);
+                    Dune::VTK::ascii);
 }
 
 
 
 int main(int argc, char** argv)
+try
 {
     Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
@@ -330,3 +328,8 @@ int main(int argc, char** argv)
                     param.getDefault("tolerance", 1e-8),
                     param.getDefault("linear_solver_type", 1));
 }
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
+}
+

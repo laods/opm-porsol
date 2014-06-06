@@ -4,7 +4,7 @@
 //
 // Created: Thu Jun 25 13:09:23 2009
 //
-// Author(s): Bård Skaflestad     <bard.skaflestad@sintef.no>
+// Author(s): Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //            Atgeirr F Rasmussen <atgeirr@sintef.no>
 //
 // $Date$
@@ -40,8 +40,7 @@
 #include <vector>
 
 #include <boost/bind.hpp>
-#include <boost/array.hpp>
-#include <boost/static_assert.hpp>
+#include <array>
 
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/utility/SparseTable.hpp>
@@ -115,7 +114,7 @@ namespace Opm {
         /// @param [in] max_nf
         ///    Maximum number of faces/connections of any single cell
         ///    in the model.  Used to set the size of certain internal
-        ///    working Dune::arrays.  A cell with @f$n_f@f$ faces results in
+        ///    working std::arrays.  A cell with @f$n_f@f$ faces results in
         ///    an inner product matrix of size @f$n_f \times n_f@f$.
         MimeticIPEvaluator(const int max_nf)
             : max_nf_(max_nf         ),
@@ -132,7 +131,7 @@ namespace Opm {
         /// @param [in] max_nf
         ///    Maximum number of faces/connections of any single cell
         ///    in the model.  Used to set the size of certain internal
-        ///    working Dune::arrays.  A cell with @f$n_f@f$ faces results in
+        ///    working std::arrays.  A cell with @f$n_f@f$ faces results in
         ///    an inner product matrix of size @f$n_f \times n_f@f$.
         void init(const int max_nf)
         {
@@ -210,10 +209,10 @@ namespace Opm {
 
             const int ci = c->index();
 
-            BOOST_STATIC_ASSERT (FV::dimension == int(dim));
-            ASSERT (int(t1_.size()) >= nf * dim);
-            ASSERT (int(t2_.size()) >= nf * dim);
-            ASSERT (int(fa_.size()) >= nf * nf);
+            static_assert (FV::dimension == int(dim), "");
+            assert (int(t1_.size()) >= nf * dim);
+            assert (int(t2_.size()) >= nf * dim);
+            assert (int(fa_.size()) >= nf * nf);
 
             SharedFortranMatrix T1  (nf, dim, &t1_      [0]);
             SharedFortranMatrix T2  (nf, dim, &t2_      [0]);
@@ -244,11 +243,11 @@ namespace Opm {
                     T2(i,j) = fc[j];
                 }
             }
-            ASSERT (i == nf);
+            assert (i == nf);
 
             // T2 <- orth(T2)
             if (orthogonalizeColumns(T2) != 0) {
-                ASSERT (false);
+                assert (false);
             }
 
             // Binv <- Binv - T2*T2' == I - Q*Q'
@@ -301,8 +300,8 @@ namespace Opm {
         {
             const int ci = c->index();
 
-            boost::array<Scalar, FluidInterface::NumberOfPhases> mob ;
-            boost::array<Scalar, FluidInterface::NumberOfPhases> rho ;
+            std::array<Scalar, FluidInterface::NumberOfPhases> mob ;
+            std::array<Scalar, FluidInterface::NumberOfPhases> rho ;
             fl.phaseMobilities(ci, s[ci], mob);
             fl.phaseDensities (ci, rho);
 
@@ -392,12 +391,12 @@ namespace Opm {
 
             const int nf = Binv.numRows();
 
-            BOOST_STATIC_ASSERT(FV::dimension == int(dim));
-            ASSERT(Binv.numRows()  <= max_nf_);
-            ASSERT(Binv.numRows()  == Binv.numCols());
-            ASSERT(int(t1_.size()) >= nf * dim);
-            ASSERT(int(t2_.size()) >= nf * dim);
-            ASSERT(int(fa_.size()) >= nf * nf);
+            static_assert(FV::dimension == int(dim), "");
+            assert(Binv.numRows()  <= max_nf_);
+            assert(Binv.numRows()  == Binv.numCols());
+            assert(int(t1_.size()) >= nf * dim);
+            assert(int(t2_.size()) >= nf * dim);
+            assert(int(fa_.size()) >= nf * nf);
 
             SharedFortranMatrix T1(nf, dim, &t1_[0]);
             SharedFortranMatrix T2(nf, dim, &t2_[0]);
@@ -421,11 +420,11 @@ namespace Opm {
                     T2(i,j) = fc[j];
                 }
             }
-            ASSERT(i == nf);
+            assert(i == nf);
 
             // T2 <- orth(T2)
             if (orthogonalizeColumns(T2) != 0) {
-                ASSERT (false);
+                assert (false);
             }
 
             // Binv <- Binv - T2*T2' == I - Q*Q'
@@ -483,7 +482,7 @@ namespace Opm {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector Point;
 
-            ASSERT (gterm.size() <= max_nf_);
+            assert (gterm.size() <= max_nf_);
 
             const Point cc = c->centroid();
             int i = 0;
@@ -511,8 +510,8 @@ namespace Opm {
         {
             const int ci = c->index();
 
-            boost::array<Scalar, FluidInterface::NumberOfPhases> mob;
-            boost::array<Scalar, FluidInterface::NumberOfPhases> rho;
+            std::array<Scalar, FluidInterface::NumberOfPhases> mob;
+            std::array<Scalar, FluidInterface::NumberOfPhases> rho;
             fl.phaseMobilities(ci, s[ci], mob);
             fl.phaseDensities (ci, rho);
 
@@ -527,7 +526,7 @@ namespace Opm {
         /// @brief Compute gravity flux for all faces of single cell.
         ///
         /// @tparam Vector
-        ///    Type representing a vector (or a linear Dune::array) for
+        ///    Type representing a vector (or a linear std::array) for
         ///    which (a constant time) @code operator[] @endcode is
         ///    defined.
         ///

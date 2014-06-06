@@ -21,9 +21,15 @@
 
 #include "config.h"
 
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/porsol/blackoil/BlackoilSimulator.hpp>
+
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
+#include <dune/common/parallel/mpihelper.hh>
+#else
 #include <dune/common/mpihelper.hh>
+#endif
+
 #include <opm/porsol/common/SimulatorUtilities.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <opm/porsol/common/Rock.hpp>
@@ -39,6 +45,8 @@ namespace Opm
 #include <opm/porsol/mimetic/TpfaCompressible.hpp>
 #include <opm/porsol/blackoil/ComponentTransport.hpp>
 
+#include <iostream>
+
 typedef Dune::CpGrid Grid;
 typedef Opm::Rock<Grid::dimension> Rock;
 typedef Opm::BlackoilFluid Fluid;
@@ -51,6 +59,7 @@ typedef Opm::BlackoilSimulator<Grid, Rock, Fluid, Wells, FlowSolver, TransportSo
 
 
 int main(int argc, char** argv)
+try
 {
     Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
@@ -66,4 +75,9 @@ int main(int argc, char** argv)
     clock.stop();
     std::cout << "\n\nSimulation clock time (secs): " << clock.secsSinceStart() << std::endl;
 }
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
+}
+
 

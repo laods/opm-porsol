@@ -22,11 +22,12 @@
 
 
 #include <dune/common/fvector.hh>
-#include <dune/common/array.hh>
+#include <array>
 #include <opm/core/utility/ErrorMacros.hpp>
 
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 namespace Opm
 {
@@ -109,9 +110,9 @@ namespace Opm
     /// @brief Common implementation for the various createPeriodic functions.
     template <class GridView>
     void findPeriodicPartners(std::vector<BoundaryFaceInfo>& bfinfo,
-                              Dune::array<double, 6>& side_areas,
+                              std::array<double, 6>& side_areas,
                               const GridView& g,
-                              const Dune::array<bool, 2*GridView::dimension>& is_periodic,
+                              const std::array<bool, 2*GridView::dimension>& is_periodic,
                               double spatial_tolerance = 1e-6)
     {
 	// Pick out all boundary faces, simultaneously find the
@@ -139,7 +140,7 @@ namespace Opm
 	}
 	int num_bdy = bface_iters.size();
 	if (max_bid != num_bdy) {
-	    THROW("createPeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
+	    OPM_THROW(std::runtime_error, "createPeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
 	}
 
 	// Store boundary face info in a suitable structure. Also find side total volumes.
@@ -169,13 +170,13 @@ namespace Opm
 		std::cerr << "Centroid: " << bf.centroid << "\n";
 		std::cerr << "Bounding box min: " << low << "\n";
 		std::cerr << "Bounding box max: " << hi << "\n";
-		THROW("Boundary face centroid not on bounding box. Maybe the grid is not an axis-aligned shoe-box?");
+		OPM_THROW(std::runtime_error, "Boundary face centroid not on bounding box. Maybe the grid is not an axis-aligned shoe-box?");
 	    }
 	    side_areas[bf.canon_pos] += bf.area;
 	    bf.centroid[bf.canon_pos/2] = 0.0;
 	    bfinfo.push_back(bf);
 	}
-	ASSERT(bfinfo.size() == bface_iters.size());
+	assert(bfinfo.size() == bface_iters.size());
 
 	// Sort the infos so that partners end up close.
 	std::sort(bfinfo.begin(), bfinfo.end());
@@ -195,8 +196,8 @@ namespace Opm
 		// We have not found a partner.
 		ok = match(bfinfo, i, 0, num_bdy);
 		if (!ok) {
-		    MESSAGE("Warning: No partner found for boundary id " << bfinfo[i].bid);
-		    // THROW("No partner found.");
+		    OPM_MESSAGE("Warning: No partner found for boundary id " << bfinfo[i].bid);
+		    // OPM_THROW(std::runtime_error, "No partner found.");
 		}
 	    }
 	}
@@ -206,9 +207,9 @@ namespace Opm
     /// @brief Common implementation for the various createPeriodic functions.
     template <class GridInterface>
     void findPeriodicPartners(std::vector<BoundaryFaceInfo>& bfinfo,
-                              Dune::array<double, 6>& side_areas,
+                              std::array<double, 6>& side_areas,
                               const GridInterface& g,
-                              const Dune::array<bool, 2*GridInterface::Dimension>& is_periodic,
+                              const std::array<bool, 2*GridInterface::Dimension>& is_periodic,
                               double spatial_tolerance = 1e-6)
     {
 	// Pick out all boundary faces, simultaneously find the
@@ -235,7 +236,7 @@ namespace Opm
 	}
 	int num_bdy = bface_iters.size();
 	if (max_bid != num_bdy) {
-	    THROW("createPeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
+	    OPM_THROW(std::runtime_error, "createPeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
 	}
 
 	// Store boundary face info in a suitable structure. Also find side total volumes.
@@ -265,13 +266,13 @@ namespace Opm
 		std::cerr << "Centroid: " << bf.centroid << "\n";
 		std::cerr << "Bounding box min: " << low << "\n";
 		std::cerr << "Bounding box max: " << hi << "\n";
-		THROW("Boundary face centroid not on bounding box. Maybe the grid is not an axis-aligned shoe-box?");
+		OPM_THROW(std::runtime_error, "Boundary face centroid not on bounding box. Maybe the grid is not an axis-aligned shoe-box?");
 	    }
 	    side_areas[bf.canon_pos] += bf.area;
 	    bf.centroid[bf.canon_pos/2] = 0.0;
 	    bfinfo.push_back(bf);
 	}
-	ASSERT(bfinfo.size() == bface_iters.size());
+	assert(bfinfo.size() == bface_iters.size());
 
 	// Sort the infos so that partners end up close.
 	std::sort(bfinfo.begin(), bfinfo.end());
@@ -291,8 +292,8 @@ namespace Opm
 		// We have not found a partner.
 		ok = match(bfinfo, i, 0, num_bdy);
 		if (!ok) {
-		    MESSAGE("Warning: No partner found for boundary id " << bfinfo[i].bid);
-		    // THROW("No partner found.");
+		    OPM_MESSAGE("Warning: No partner found for boundary id " << bfinfo[i].bid);
+		    // OPM_THROW(std::runtime_error, "No partner found.");
 		}
 	    }
 	}

@@ -37,8 +37,9 @@
 #define OPENRS_RESERVOIRPROPERTYCOMMON_HEADER
 
 #include <opm/core/utility/Units.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/porsol/common/Matrix.hpp>
+
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 namespace Opm
 {
@@ -71,17 +72,17 @@ namespace Opm
         ReservoirPropertyCommon();
 
         /// @brief Initialize from a grdecl file.
-        /// @param parser the parser holding the grdecl data.
-	/// @param global_cell the mapping from cell indices to the logical
-	///                    cartesian indices of the grdecl file.
- 	/// @param perm_threshold lower threshold for permeability.
- 	/// @param rock_list_filename if non-null, the referred string gives
+        /// @param deck the deck holding the grdecl data.
+        /// @param global_cell the mapping from cell indices to the logical
+        ///                    cartesian indices of the grdecl file.
+        /// @param perm_threshold lower threshold for permeability.
+        /// @param rock_list_filename if non-null, the referred string gives
         ///                           the filename for the rock list.
         /// @param use_jfunction_scaling if true, use j-function scaling of capillary
         ///                              pressure, if applicable.
         /// @param sigma interface tension for j-scaling, if applicable.
         /// @param theta angle for j-scaling, if applicable.
-        void init(const Opm::EclipseGridParser& parser,
+        void init(Opm::DeckConstPtr deck,
                   const std::vector<int>& global_cell,
                   const double perm_threshold = 0.0,
                   const std::string* rock_list_filename = 0,
@@ -127,6 +128,21 @@ namespace Opm
         /// @param cell_index index of a grid cell.
         /// @return porosity value of the cell.
         double porosity(int cell_index) const;
+
+        /// @brief Read-access to ntg.
+        /// @param cell_index index of a grid cell.
+        /// @return ntg value of the cell.
+        double ntg(int cell_index) const;
+
+        /// @brief Read-access to swcr.
+        /// @param cell_index index of a grid cell.
+        /// @return swcr value of the cell.
+        double swcr(int cell_index) const;
+
+        /// @brief Read-access to sowcr.
+        /// @param cell_index index of a grid cell.
+        /// @return sowcr value of the cell.
+        double sowcr(int cell_index) const;
 
         /// @brief Read-access to permeability.
         /// @param cell_index index of a grid cell.
@@ -195,12 +211,18 @@ namespace Opm
 
     protected:
 	// Methods
-        void assignPorosity(const Opm::EclipseGridParser& parser,
+        void assignPorosity(Opm::DeckConstPtr deck,
                             const std::vector<int>& global_cell);
-        void assignPermeability(const Opm::EclipseGridParser& parser,
+        void assignNTG(Opm::DeckConstPtr deck,
+                       const std::vector<int>& global_cell);
+        void assignSWCR(Opm::DeckConstPtr deck,
+                        const std::vector<int>& global_cell);
+        void assignSOWCR(Opm::DeckConstPtr deck,
+                         const std::vector<int>& global_cell);
+        void assignPermeability(Opm::DeckConstPtr deck,
                                 const std::vector<int>& global_cell,
                                 const double perm_threshold);
-        void assignRockTable(const Opm::EclipseGridParser& parser,
+        void assignRockTable(Opm::DeckConstPtr deck,
                              const std::vector<int>& global_cell);
         void readRocks(const std::string& rock_list_file);
 
@@ -209,6 +231,9 @@ namespace Opm
 
 	// Data members.
         std::vector<double>        porosity_;
+        std::vector<double>        ntg_;
+        std::vector<double>        swcr_;
+        std::vector<double>        sowcr_;
         std::vector<double>        permeability_;
         std::vector<unsigned char> permfield_valid_;
         double density1_;

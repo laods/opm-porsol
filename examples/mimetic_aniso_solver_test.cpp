@@ -33,24 +33,29 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
 
-#include <boost/static_assert.hpp>
 
-#include <dune/common/array.hh>
+#include <array>
+
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
+#include <dune/common/parallel/mpihelper.hh>
+#else
 #include <dune/common/mpihelper.hh>
+#endif
+
 #include <opm/core/utility/Units.hpp>
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
+
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <opm/porsol/common/fortran.hpp>
 #include <opm/porsol/common/blas_lapack.hpp>
@@ -62,6 +67,9 @@
 #include <opm/porsol/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
 #include <opm/porsol/mimetic/IncompFlowSolverHybrid.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
+
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 
 template <int dim, class Interface>
@@ -113,22 +121,22 @@ void test_evaluator(const Interface& g)
 }
 
 
-void build_grid(const Opm::EclipseGridParser& parser,
+void build_grid(Opm::DeckConstPtr deck,
                 const double z_tol, Dune::CpGrid& grid,
-                std::tr1::array<int,3>& cartDims)
+                std::array<int,3>& cartDims)
 {
-    Opm::EclipseGridInspector insp(parser);
+    Opm::EclipseGridInspector insp(deck);
 
     grdecl g;
     cartDims[0] = g.dims[0] = insp.gridSize()[0];
     cartDims[1] = g.dims[1] = insp.gridSize()[1];
     cartDims[2] = g.dims[2] = insp.gridSize()[2];
 
-    g.coord = &parser.getFloatingPointValue("COORD")[0];
-    g.zcorn = &parser.getFloatingPointValue("ZCORN")[0];
+    g.coord = &deck->getKeyword("COORD")->getSIDoubleData()[0];
+    g.zcorn = &deck->getKeyword("ZCORN")->getSIDoubleData()[0];
 
-    if (parser.hasField("ACTNUM")) {
-        g.actnum = &parser.getIntegerValue("ACTNUM")[0];
+    if (deck->hasKeyword("ACTNUM")) {
+        g.actnum = &deck->getKeyword("ACTNUM")->getIntData()[0];
         grid.processEclipseFormat(g, z_tol, false, false);
     } else {
         std::vector<int> dflt_actnum(g.dims[0] * g.dims[1] * g.dims[2], 1);
@@ -215,6 +223,7 @@ void test_flowsolver(const GI& g, const RI& r)
 using namespace Opm;
 
 int main(int argc, char** argv)
+try
 {
     Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
@@ -222,10 +231,11 @@ int main(int argc, char** argv)
     // Make a grid
     Dune::CpGrid grid;
 
-    Opm::EclipseGridParser parser(param.get<std::string>("filename"));
+    Opm::ParserPtr parser(new Opm::Parser());
+    Opm::DeckConstPtr deck(parser->parseFile(param.get<std::string>("filename")));
     double z_tol = param.getDefault<double>("z_tolerance", 0.0);
-    std::tr1::array<int,3> cartDims;
-    build_grid(parser, z_tol, grid, cartDims);
+    std::array<int,3> cartDims;
+    build_grid(deck, z_tol, grid, cartDims);
 
     // Make the grid interface
     Opm::GridInterfaceEuler<Dune::CpGrid> g(grid);
@@ -233,7 +243,7 @@ int main(int argc, char** argv)
     // Reservoir properties.
     typedef ReservoirPropertyCapillaryAnisotropicRelperm<3> RP;
     RP res_prop;
-    res_prop.init(parser, grid.globalCell());
+    res_prop.init(deck, grid.globalCell());
 
     assign_permeability<3>(res_prop, g.numberOfCells(), 0.1*Opm::unit::darcy);
     test_flowsolver<3>(g, res_prop);
@@ -274,10 +284,15 @@ int main(int argc, char** argv)
     transport_solver.transportSolve(sat, time, gravity, flow_solution);
 #endif
 }
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
+}
+
 
 
 #if 0
-int main (int argc , char **argv) {
+int main (int argc , char **argv) try {
     try {
 #if HAVE_MPI
 	// initialize MPI
@@ -306,4 +321,9 @@ int main (int argc , char **argv) {
 
     return 0;
 }
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
+}
+
 #endif

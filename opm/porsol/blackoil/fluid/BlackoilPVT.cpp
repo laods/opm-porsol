@@ -17,10 +17,9 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
+#include "config.h"
 
 #include "BlackoilPVT.hpp"
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/utility/Units.hpp>
 #include "MiscibilityDead.hpp"
 #include "MiscibilityLiveOil.hpp"
@@ -29,54 +28,66 @@
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/utility/linearInterpolation.hpp>
 
+#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/Utility/PvtgTable.hpp>
+#include <opm/parser/eclipse/Utility/PvtwTable.hpp>
+#include <opm/parser/eclipse/Utility/PvtoTable.hpp>
+#include <opm/parser/eclipse/Utility/PvdgTable.hpp>
+#include <opm/parser/eclipse/Utility/PvdoTable.hpp>
+#include <opm/parser/eclipse/Utility/PvcdoTable.hpp>
+
 using namespace Opm;
 
 namespace Opm
 {
 
 
-    void BlackoilPVT::init(const Opm::EclipseGridParser& parser)
+    void BlackoilPVT::init(Opm::DeckConstPtr deck)
     {
-        typedef std::vector<std::vector<std::vector<double> > > table_t;
 	region_number_ = 0;
 
 	// Surface densities. Accounting for different orders in eclipse and our code.
-	if (parser.hasField("DENSITY")) {
-	    const int region_number = 0;
-	    enum { ECL_oil = 0, ECL_water = 1, ECL_gas = 2 };
-	    const std::vector<double>& d = parser.getDENSITY().densities_[region_number];
-	    densities_[Aqua]   = d[ECL_water];
-	    densities_[Vapour] = d[ECL_gas];
-	    densities_[Liquid] = d[ECL_oil];
+	if (deck->hasKeyword("DENSITY")) {
+        Opm::DeckRecordConstPtr densityRecord =
+            deck->getKeyword("DENSITY")->getRecord(/*regionIdx=*/0);
+	    densities_[Aqua]   = densityRecord->getItem("WATER")->getSIDouble(0);
+	    densities_[Vapour] = densityRecord->getItem("GAS")->getSIDouble(0);
+	    densities_[Liquid] = densityRecord->getItem("OIL")->getSIDouble(0);
 	} else {
-	    THROW("Input is missing DENSITY\n");
+	    OPM_THROW(std::runtime_error, "Input is missing DENSITY\n");
 	}
 
         // Water PVT
-        if (parser.hasField("PVTW")) {
-            water_props_.reset(new MiscibilityWater(parser.getPVTW().pvtw_));
+        if (deck->hasKeyword("PVTW")) {
+            PvtwTable pvtwTable(deck->getKeyword("PVTW"));
+            water_props_.reset(new MiscibilityWater(pvtwTable));
         } else {
             water_props_.reset(new MiscibilityWater(0.5*Opm::prefix::centi*Opm::unit::Poise)); // Eclipse 100 default 
         }
 
         // Oil PVT
-        if (parser.hasField("PVDO")) {
-            oil_props_.reset(new MiscibilityDead(parser.getPVDO().pvdo_));
-        } else if (parser.hasField("PVTO")) {
-            oil_props_.reset(new MiscibilityLiveOil(parser.getPVTO().pvto_));
-        } else if (parser.hasField("PVCDO")) {
-            oil_props_.reset(new MiscibilityWater(parser.getPVCDO().pvcdo_));
+        if (deck->hasKeyword("PVDO")) {
+            PvdoTable pvdoTable(deck->getKeyword("PVDO"));
+            oil_props_.reset(new MiscibilityDead(pvdoTable));
+        } else if (deck->hasKeyword("PVTO")) {
+            PvtoTable pvtoTable(deck->getKeyword("PVTO"), /*tableIdx=*/0);
+            oil_props_.reset(new MiscibilityLiveOil(pvtoTable));
+        } else if (deck->hasKeyword("PVCDO")) {
+            PvcdoTable pvcdoTable(deck->getKeyword("PVCDO"));
+            oil_props_.reset(new MiscibilityWater(pvcdoTable));
         } else {
-            THROW("Input is missing PVDO and PVTO\n");
+            OPM_THROW(std::runtime_error, "Input is missing PVDO and PVTO\n");
         }
 
 	// Gas PVT
-        if (parser.hasField("PVDG")) {
-            gas_props_.reset(new MiscibilityDead(parser.getPVDG().pvdg_));
-        } else if (parser.hasField("PVTG")) {
-            gas_props_.reset(new MiscibilityLiveGas(parser.getPVTG().pvtg_));
+        if (deck->hasKeyword("PVDG")) {
+            PvdgTable pvdgTable(deck->getKeyword("PVDG"));
+            gas_props_.reset(new MiscibilityDead(pvdgTable));
+        } else if (deck->hasKeyword("PVTG")) {
+            PvtgTable pvtgTable(deck->getKeyword("PVTG"), /*tableIdx=*/0);
+            gas_props_.reset(new MiscibilityLiveGas(pvtgTable));
         } else {
-	    THROW("Input is missing PVDG and PVTG\n");
+	    OPM_THROW(std::runtime_error, "Input is missing PVDG and PVTG\n");
         }
     }
 
@@ -120,7 +131,7 @@ namespace Opm
         case Vapour:
             return *gas_props_;
         default:
-            THROW("Unknown phase accessed: " << phase);
+            OPM_THROW(std::runtime_error, "Unknown phase accessed: " << phase);
         }
     }
 
